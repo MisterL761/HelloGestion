@@ -1,0 +1,27 @@
+# Bloquer l'accès direct aux fichiers de configuration et utilitaires sensibles
+<FilesMatch "^(config|security|db|roles|assistant_config|hash|debug|cron_debug|uptimerobot_endpoint)\.php$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order Deny,Allow
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Bloquer l'accès au dossier logs/
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^logs/ - [F,L]
+</IfModule>
+
+# Bloquer accès aux fichiers .env et .log
+<FilesMatch "\.(env|log)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order Deny,Allow
+        Deny from all
+    </IfModule>
+</FilesMatch>

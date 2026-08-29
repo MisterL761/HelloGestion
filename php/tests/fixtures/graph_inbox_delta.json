@@ -1,0 +1,22 @@
+{
+  "value": [
+    {
+      "id": "AAMkAGI2TG93AAA=",
+      "conversationId": "AAQkAGI2TG93convA",
+      "subject": "ARC commande n°45812",
+      "from": { "emailAddress": { "name": "Somfy Commandes", "address": "noreply@somfy.fr" } },
+      "body": { "contentType": "html", "content": "<p>Veuillez trouver votre ARC.</p>" },
+      "receivedDateTime": "2026-07-01T09:30:00Z",
+      "hasAttachments": true
+    },
+    {
+      "id": "AAMkSUPPRIME=",
+      "@removed": { "reason": "deleted" }
+    },
+    {
+      "id": "AAMkSANSFROM=",
+      "subject": "Message système",
+      "receivedDateTime": "2026-07-01T10:00:00Z"
+    }
+  ]
+}

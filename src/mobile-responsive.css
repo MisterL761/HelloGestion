@@ -1,0 +1,587 @@
+
+* {
+    -webkit-tap-highlight-color: transparent;
+    box-sizing: border-box;
+}
+
+body, html {
+    overscroll-behavior: none;
+    touch-action: pan-y;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+.hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+
+@keyframes slideUp {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.animate-slideUp {
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-slideDown {
+    animation: slideDown 0.2s ease-out;
+}
+
+.animate-fadeIn {
+    animation: fadeIn 0.2s ease-out;
+}
+
+/* =========================================
+   TOUCH TARGETS - MINIMUM 44x44px
+   ========================================= */
+button,
+a,
+input[type="submit"],
+input[type="button"],
+select,
+.btn,
+.clickable {
+    min-height: 44px;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* Optimisation des zones cliquables */
+@media (max-width: 768px) {
+    button, .btn {
+        min-height: 48px;
+        padding: 0.875rem 1.25rem;
+        font-size: 1rem;
+    }
+
+    /* Boutons pleine largeur sur mobile */
+    .btn-mobile-full {
+        width: 100%;
+    }
+}
+
+/* =========================================
+   INPUTS ET FORMULAIRES
+   ========================================= */
+/* Prévention du zoom automatique sur iOS */
+@media (max-width: 768px) {
+    input,
+    select,
+    textarea {
+        font-size: 16px !important;
+        padding: 0.875rem 1rem;
+        min-height: 44px;
+    }
+
+    input[type="date"],
+    input[type="time"],
+    input[type="datetime-local"],
+    input[type="number"] {
+        min-height: 48px;
+        font-size: 16px !important;
+    }
+}
+
+/* Focus states améliorés */
+input:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    border-color: #3B82F6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* =========================================
+   CARTES MOBILES
+   ========================================= */
+.card-mobile {
+    background: white;
+    border-radius: 0.75rem;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: 1px solid #E5E7EB;
+}
+
+@media (min-width: 769px) {
+    .card-mobile {
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+}
+
+/* =========================================
+   MODALES MOBILE
+   ========================================= */
+@media (max-width: 768px) {
+    .modal-overlay {
+        align-items: flex-end;
+        padding: 0 !important;
+    }
+
+    .modal-content {
+        max-height: 95vh;
+        border-radius: 1.5rem 1.5rem 0 0;
+        animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .modal-full-mobile {
+        max-height: 100vh;
+        height: 100vh;
+        border-radius: 0;
+    }
+
+    .modal-header {
+        padding: 1.25rem 1rem;
+    }
+
+    .modal-body {
+        padding: 1rem;
+        max-height: calc(90vh - 120px);
+        overflow-y: auto;
+    }
+
+    .modal-footer {
+        padding: 1rem;
+        border-top: 1px solid #E5E7EB;
+    }
+}
+
+/* =========================================
+   SIDEBAR MOBILE
+   ========================================= */
+@media (max-width: 768px) {
+    .sidebar-mobile {
+        position: fixed;
+        inset-y: 0;
+        left: 0;
+        width: 280px;
+        background: white;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        transform: translateX(-100%);
+        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        z-index: 40;
+    }
+
+    .sidebar-mobile.open {
+        transform: translateX(0);
+    }
+
+    .sidebar-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 30;
+        animation: fadeIn 0.2s ease-out;
+    }
+}
+
+/* =========================================
+   TABLEAUX RESPONSIVE
+   ========================================= */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Masquer colonnes sur mobile */
+@media (max-width: 640px) {
+    .hide-mobile {
+        display: none !important;
+    }
+}
+
+@media (max-width: 1024px) {
+    .hide-tablet {
+        display: none !important;
+    }
+}
+
+@media (max-width: 1280px) {
+    .hide-desktop {
+        display: none !important;
+    }
+}
+
+/* Afficher uniquement sur mobile */
+@media (min-width: 769px) {
+    .show-mobile-only {
+        display: none !important;
+    }
+}
+
+/* =========================================
+   HEADER MOBILE
+   ========================================= */
+@media (max-width: 768px) {
+    .header-mobile {
+        padding: 0.75rem 1rem;
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: white;
+        border-bottom: 1px solid #E5E7EB;
+    }
+
+    .header-search-mobile {
+        margin-top: 0.75rem;
+        animation: slideDown 0.2s ease-out;
+    }
+}
+
+/* =========================================
+   TABS MOBILE
+   ========================================= */
+@media (max-width: 768px) {
+    .tabs-mobile {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    .tabs-mobile::-webkit-scrollbar {
+        display: none;
+    }
+
+    .tab-item {
+        min-width: fit-content;
+        white-space: nowrap;
+        padding: 0.75rem 1rem;
+        min-height: 52px;
+    }
+}
+
+/* =========================================
+   MENU ACTIONS MOBILE
+   ========================================= */
+.action-menu-mobile {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+}
+
+.action-menu-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    animation: fadeIn 0.2s ease-out;
+}
+
+.action-menu-content {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    border-radius: 1.5rem 1.5rem 0 0;
+    box-shadow: 0 -10px 25px rgba(0, 0, 0, 0.1);
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    max-height: 80vh;
+    overflow: hidden;
+}
+
+.action-menu-item {
+    min-height: 56px;
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    transition: background-color 0.2s;
+}
+
+.action-menu-item:active {
+    background-color: #F3F4F6;
+}
+
+/* =========================================
+   GRILLES RESPONSIVE
+   ========================================= */
+.grid-responsive-1 {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: 1fr;
+}
+
+.grid-responsive-2 {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(2, 1fr);
+}
+
+@media (min-width: 640px) {
+    .grid-responsive-1 {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+}
+
+@media (min-width: 768px) {
+    .grid-responsive-1 {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .grid-responsive-2 {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .grid-responsive-1 {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.5rem;
+    }
+
+    .grid-responsive-2 {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+/* =========================================
+   STATS CARDS MOBILE
+   ========================================= */
+.stat-card-mobile {
+    background: white;
+    border-radius: 0.75rem;
+    padding: 0.75rem;
+    border-left: 4px solid;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+@media (min-width: 768px) {
+    .stat-card-mobile {
+        padding: 1rem;
+    }
+}
+
+.stat-card-mobile .stat-label {
+    font-size: 0.75rem;
+    color: #6B7280;
+    margin-bottom: 0.25rem;
+}
+
+.stat-card-mobile .stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #111827;
+}
+
+@media (min-width: 768px) {
+    .stat-card-mobile .stat-label {
+        font-size: 0.875rem;
+    }
+
+    .stat-card-mobile .stat-value {
+        font-size: 1.875rem;
+    }
+}
+
+/* =========================================
+   BADGES ET TAGS
+   ========================================= */
+.badge-mobile {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.375rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1;
+}
+
+@media (min-width: 768px) {
+    .badge-mobile {
+        font-size: 0.875rem;
+        padding: 0.5rem 1rem;
+    }
+}
+
+/* =========================================
+   SPACING UTILITIES MOBILE
+   ========================================= */
+.spacing-mobile-sm {
+    padding: 0.5rem;
+}
+
+.spacing-mobile-md {
+    padding: 0.75rem;
+}
+
+.spacing-mobile-lg {
+    padding: 1rem;
+}
+
+@media (min-width: 768px) {
+    .spacing-mobile-sm {
+        padding: 0.75rem;
+    }
+
+    .spacing-mobile-md {
+        padding: 1rem;
+    }
+
+    .spacing-mobile-lg {
+        padding: 1.5rem;
+    }
+}
+
+/* =========================================
+   PHOTO VIEWER MOBILE
+   ========================================= */
+.photo-viewer-mobile {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.95);
+    z-index: 50;
+}
+
+.photo-viewer-mobile img {
+    max-width: 100%;
+    max-height: 100vh;
+    object-fit: contain;
+    touch-action: pan-x pan-y pinch-zoom;
+}
+
+@media (max-width: 768px) {
+    .photo-viewer-mobile img {
+        padding: 4rem 1rem;
+    }
+
+    .photo-viewer-controls {
+        padding: 0.75rem;
+    }
+
+    .photo-viewer-indicator {
+        bottom: 1.5rem;
+        font-size: 0.75rem;
+        padding: 0.5rem 1rem;
+    }
+}
+
+/* =========================================
+   SAFE AREA INSETS (iPhone notch, etc.)
+   ========================================= */
+@supports (padding: env(safe-area-inset-top)) {
+    .safe-area-top {
+        padding-top: env(safe-area-inset-top);
+    }
+
+    .safe-area-bottom {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .safe-area-left {
+        padding-left: env(safe-area-inset-left);
+    }
+
+    .safe-area-right {
+        padding-right: env(safe-area-inset-right);
+    }
+}
+
+/* =========================================
+   PERFORMANCES
+   ========================================= */
+/* Amélioration du rendu */
+.gpu-accelerated {
+    transform: translateZ(0);
+    will-change: transform;
+}
+
+/* Optimisation des transitions */
+.smooth-transition {
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* =========================================
+   DARK MODE READY (optionnel)
+   ========================================= */
+@media (prefers-color-scheme: dark) {
+    .card-mobile,
+    .modal-content {
+        background-color: #1F2937;
+        border-color: #374151;
+        color: #F9FAFB;
+    }
+}
+
+/* =========================================
+   PRINT STYLES
+   ========================================= */
+@media print {
+    .no-print,
+    button,
+    .btn,
+    .sidebar-mobile,
+    .header-mobile {
+        display: none !important;
+    }
+
+    .card-mobile {
+        box-shadow: none;
+        border: 1px solid #E5E7EB;
+        page-break-inside: avoid;
+    }
+}
+
+/* =========================================
+   ACCESSIBILITÉ
+   ========================================= */
+/* Focus visible pour navigation clavier */
+*:focus-visible {
+    outline: 2px solid #3B82F6;
+    outline-offset: 2px;
+}
+
+/* Amélioration du contraste */
+@media (prefers-contrast: high) {
+    button,
+    .btn {
+        border: 2px solid currentColor;
+    }
+}
+
+/* Réduction des animations si préféré */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}

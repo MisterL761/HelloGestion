@@ -1,0 +1,45 @@
+# ─── Dépendances ────────────────────────────────────────────────
+node_modules/
+"node_modules 2"/
+
+# ─── Build ──────────────────────────────────────────────────────
+dist/
+dist-ssr/
+
+# ─── Logs ───────────────────────────────────────────────────────
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ─── Fichiers sensibles — NE JAMAIS COMMITER ────────────────────
+.env
+.env.local
+.env.*.local
+php/config.php
+php/db.php
+php/logs/
+php/uploads/
+php/assistant_config.php
+php/hash.php
+php/debug.php
+php/cron_debug.php
+
+# ─── Outils locaux (agents / tooling) ───────────────────────────
+.claude/
+.playwright-mcp/
+.superpowers/
+
+# ─── OS / Éditeurs ──────────────────────────────────────────────
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.suo
+*.sw?
+
+# ─── Divers ─────────────────────────────────────────────────────
+*.local
+"package-lock 2.json"

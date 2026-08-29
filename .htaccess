@@ -1,0 +1,17 @@
+# Autorise l'exécution PHP
+<Files "*.php">
+    Require all granted
+</Files>
+
+# Redirige tout vers index.html (sauf fichiers réels)
+RewriteEngine On
+RewriteBase /hello-gestion/
+
+# Ne jamais réécrire les fichiers du dossier uploads (images, PDFs, etc.)
+RewriteCond %{REQUEST_URI} ^/hello-gestion/php/uploads/ [NC]
+RewriteRule ^ - [L]
+
+# Ne pas réécrire les fichiers/dossiers existants
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.html [L]
