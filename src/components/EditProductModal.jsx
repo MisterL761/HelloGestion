@@ -84,6 +84,7 @@ const EditProductModal = ({ isOpen, onClose, product, onSave }) => {
                         date: apiDate,
                         product: product.product,
                         supplier: product.supplier,
+                        location: product.location || 'Dépôt',
                         status: product.status,
                         photos_paths: data.photos_paths || []
                     });
@@ -96,7 +97,8 @@ const EditProductModal = ({ isOpen, onClose, product, onSave }) => {
                     client: formData.client,
                     date: apiDate,
                     product: product.product || 'Commande',
-                    supplier: product.supplier || 'Dépôt'
+                    supplier: product.supplier || 'Dépôt',
+                    location: product.location || 'Dépôt'
                 });
             }
         } catch (err) {
