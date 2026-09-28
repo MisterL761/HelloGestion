@@ -22,6 +22,7 @@ import ComparateurDevis from './components/ComparateurDevis';
 import GenerateurARC from './components/GenerateurARC';
 import GenerateurDescriptifs from './components/GenerateurDescriptifs';
 import GenerateurCourrier from './components/GenerateurCourrier';
+import GenerateurPrompts from './components/GenerateurPrompts';
 import StockHistory from './components/StockHistory';
 import Catalogue from './components/Catalogue';
 import Chantiers from './components/Chantiers';
@@ -244,6 +245,9 @@ function App() {
         } else if (section === 'generateur-courrier') {
             setActiveModule('generateur-courrier');
             setActiveSidebar('generateur-courrier');
+        } else if (section === 'generateur-prompts') {
+            setActiveModule('generateur-prompts');
+            setActiveSidebar('generateur-prompts');
         } else if (section === 'history') {
             setActiveModule('history');
             setActiveSidebar('history');
@@ -593,6 +597,7 @@ function App() {
         'generateur-arc':   'Générateur ARC',
         'generateur-descriptifs': 'Générateur de descriptifs',
         'generateur-courrier': 'Générateur de courrier',
+        'generateur-prompts': 'Générateur de prompts',
         catalogue:          'Catalogue',
         'calcul-chantier':  'Calcul Chantier',
         chantiers:          'Rentabilité Chantiers',
@@ -765,7 +770,7 @@ function App() {
                         )}
 
                         {/* ── MODULES RESSOURCES ── */}
-                        {['annuaire','assistant','comparateur','generateur-arc','generateur-descriptifs','generateur-courrier','catalogue','chantiers','calcul-chantier'].includes(activeModule) && displayUser?.role !== 'collaborateur' && (
+                        {['annuaire','assistant','comparateur','generateur-arc','generateur-descriptifs','generateur-courrier','generateur-prompts','catalogue','chantiers','calcul-chantier'].includes(activeModule) && displayUser?.role !== 'collaborateur' && (
                             <MobileResourcesNav activeModule={activeModule} onNavigate={handleNavigation} user={displayUser} />
                         )}
                         {activeModule === 'annuaire'       && <Annuaire user={displayUser} />}
@@ -774,6 +779,7 @@ function App() {
                         {activeModule === 'generateur-arc' && <GenerateurARC />}
                         {activeModule === 'generateur-descriptifs' && ['admin','gerant','administration','chef_equipe','commercial'].includes(displayUser?.role) && <GenerateurDescriptifs />}
                         {activeModule === 'generateur-courrier' && ['admin','gerant','administration','chef_equipe','commercial'].includes(displayUser?.role) && <GenerateurCourrier user={displayUser} />}
+                        {activeModule === 'generateur-prompts' && ['admin','gerant','administration','chef_equipe','commercial'].includes(displayUser?.role) && <GenerateurPrompts />}
                         {activeModule === 'catalogue'      && <Catalogue user={displayUser} />}
                         {activeModule === 'chantiers'      && <Chantiers user={displayUser} />}
                         {activeModule === 'calcul-chantier' && <CalculChantier />}

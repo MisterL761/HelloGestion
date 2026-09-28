@@ -154,6 +154,9 @@ const Sidebar = ({ activeSidebar, onNavigate, isOpen, onClose, onLogout, user, i
                             {['admin','gerant','administration','chef_equipe','commercial'].includes(role) && (
                                 <NavItem icon={Mail} label="Générateur courrier" id="generateur-courrier" active={activeSidebar === 'generateur-courrier'} />
                             )}
+                            {['admin','gerant','administration','chef_equipe','commercial'].includes(role) && (
+                                <NavItem icon={Bot} label="Générateur de prompts" id="generateur-prompts" active={activeSidebar === 'generateur-prompts'} />
+                            )}
                             {role !== 'poseur' && (
                                 <NavItem icon={BookMarked} label="Catalogue"         id="catalogue"      active={activeSidebar === 'catalogue'} />
                             )}
