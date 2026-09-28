@@ -29,8 +29,7 @@ import {
     CreditCard,
     Inbox,
     PencilRuler,
-    Mail,
-    Brain
+    Mail
 } from 'lucide-react';
 
 // Rôles autorisés à voir le Dashboard
@@ -325,14 +324,6 @@ const Sidebar = ({
                                     active={activeSidebar === 'generateur-courrier'}
                                 />
                             )}
-
-                            {/* NOUVEAU : Générateur de prompts */}
-                            <NavItem
-                                icon={Brain}
-                                label="Générateur de prompts"
-                                id="generateur-prompts"
-                                active={activeSidebar === 'generateur-prompts'}
-                            />
 
                             {role !== 'poseur' && (
                                 <NavItem

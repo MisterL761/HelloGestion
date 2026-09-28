@@ -9,8 +9,7 @@ import {
     TrendingUp,
     Calculator,
     PencilRuler,
-    Mail,
-    Brain
+    Mail
 } from 'lucide-react';
 
 const RESOURCE_TABS = [
@@ -66,14 +65,6 @@ const RESOURCE_TABS = [
             'chef_equipe',
             'commercial'
         ]
-    },
-
-    // NOUVEAU
-    {
-        id: 'generateur-prompts',
-        label: 'Prompts',
-        icon: Brain,
-        roles: null
     },
 
     {

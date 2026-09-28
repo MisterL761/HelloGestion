@@ -31,9 +31,6 @@ import GenerateurARC from './components/GenerateurARC';
 import GenerateurDescriptifs from './components/GenerateurDescriptifs';
 import GenerateurCourrier from './components/GenerateurCourrier';
 
-/* NOUVEAU */
-import GenerateurPrompts from './components/GenerateurPrompts';
-
 import StockHistory from './components/StockHistory';
 import Catalogue from './components/Catalogue';
 import Chantiers from './components/Chantiers';
@@ -486,21 +483,6 @@ function App() {
                 );
                 setActiveSidebar(
                     'generateur-courrier'
-                );
-
-            /* ─────────────────────────────
-               NOUVEAU : Générateur prompts
-               ───────────────────────────── */
-            } else if (
-                section ===
-                'generateur-prompts'
-            ) {
-                setActiveModule(
-                    'generateur-prompts'
-                );
-
-                setActiveSidebar(
-                    'generateur-prompts'
                 );
 
             } else if (section === 'history') {
@@ -1631,10 +1613,6 @@ function App() {
         'generateur-courrier':
             'Générateur de courrier',
 
-        /* NOUVEAU */
-        'generateur-prompts':
-            'Générateur de prompts',
-
         catalogue:
             'Catalogue',
 
@@ -2089,9 +2067,6 @@ function App() {
                             'generateur-descriptifs',
                             'generateur-courrier',
 
-                            /* NOUVEAU */
-                            'generateur-prompts',
-
                             'catalogue',
                             'chantiers',
                             'calcul-chantier'
@@ -2171,14 +2146,6 @@ function App() {
                                         displayUser
                                     }
                                 />
-                            )}
-
-                        {/* ─────────────────────────
-                            NOUVEAU : GÉNÉRATEUR PROMPTS
-                           ───────────────────────── */}
-                        {activeModule ===
-                            'generateur-prompts' && (
-                                <GenerateurPrompts />
                             )}
 
                         {activeModule ===
