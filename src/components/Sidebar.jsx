@@ -30,7 +30,8 @@ import {
     Inbox,
     PencilRuler,
     Mail,
-    Brain
+    Brain,
+    Mail,
 } from 'lucide-react';
 
 // Rôles autorisés à voir le Dashboard

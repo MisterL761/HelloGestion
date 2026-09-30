@@ -262,7 +262,7 @@ npm run build        # génère dist/
 
 **Accès nécessaires à transmettre au repreneur :**
 - Accès serveur OVH (FTP/SSH/cPanel)
-- Accès base de données MySQL (`helloferep296`)
+- Accès base de données MySQL (`helloferep295`)
 - Compte UptimeRobot (monitoring + déclenchement cron)
 - `CRON_TOKEN`, `MISTRAL_API_KEY`, et autres secrets de `config.php` (jamais versionné, `config.php`/`db.php` doivent être transmis à part, hors dépôt Git)
 - Accès au dépôt Git

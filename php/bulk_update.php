@@ -11,7 +11,7 @@ $_SESSION['LAST_ACTIVITY'] = time();
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
-header('Access-Control-Allow-Origin: https://hello-fermetures.com');
+header('Access-Control-Allow-Origin: ' . ALLOWED_ORIGIN);
 header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 header('Access-Control-Allow-Credentials: true');
