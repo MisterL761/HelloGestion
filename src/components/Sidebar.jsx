@@ -31,7 +31,6 @@ import {
     PencilRuler,
     Mail,
     Brain,
-    Mail,
 } from 'lucide-react';
 
 // Rôles autorisés à voir le Dashboard
