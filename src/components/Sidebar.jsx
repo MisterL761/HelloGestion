@@ -130,33 +130,72 @@ const Sidebar = ({
 
         try {
 
-            const response = await fetch(
-                '/hello-gestion/php/user_notifications.php?action=list&_=' + Date.now(),
-                {
-                    method: 'GET',
-                    credentials: 'include'
+            const [stockResponse, rightsResponse] =
+                await Promise.all([
+                    fetch(
+                        '/hello-gestion/php/user_notifications.php?action=list&_=' + Date.now(),
+                        {
+                            method: 'GET',
+                            credentials: 'include'
+                        }
+                    ),
+                    fetch(
+                        '/hello-gestion/php/generator_permissions.php?action=notifications&_=' + Date.now(),
+                        {
+                            method: 'GET',
+                            credentials: 'include'
+                        }
+                    )
+                ]);
+
+            let stockNotifications = [];
+            let rightsNotifications = [];
+
+            if (stockResponse.ok) {
+                const stockData = await stockResponse.json();
+
+                if (stockData.success && Array.isArray(stockData.notifications)) {
+                    stockNotifications = stockData.notifications.map(
+                        notification => ({
+                            ...notification,
+                            notification_type: 'stock'
+                        })
+                    );
                 }
+            }
+
+            if (rightsResponse.ok) {
+                const rightsData = await rightsResponse.json();
+
+                if (rightsData.success && Array.isArray(rightsData.notifications)) {
+                    rightsNotifications = rightsData.notifications.map(
+                        notification => ({
+                            ...notification,
+                            notification_type: 'generator_permission',
+                            claimed_by: null,
+                            claimed_by_name: null,
+                            inventory_id: null
+                        })
+                    );
+                }
+            }
+
+            const mergedNotifications = [
+                ...stockNotifications,
+                ...rightsNotifications
+            ].sort(
+                (a, b) =>
+                    new Date(b.created_at).getTime() -
+                    new Date(a.created_at).getTime()
             );
 
-            if (!response.ok) {
-                return;
-            }
+            setNotifications(mergedNotifications);
 
-            const data =
-                await response.json();
-
-            if (data.success) {
-
-                setNotifications(
-                    Array.isArray(data.notifications)
-                        ? data.notifications
-                        : []
-                );
-
-                setUnreadCount(
-                    Number(data.unread_count || 0)
-                );
-            }
+            setUnreadCount(
+                mergedNotifications.filter(
+                    notification => Number(notification.is_read) === 0
+                ).length
+            );
 
         } catch (error) {
 
@@ -192,25 +231,46 @@ const Sidebar = ({
     // ========================================================
 
     const markNotificationAsRead =
-        async (notificationId) => {
+        async (notification) => {
 
             try {
 
-                await fetch(
-                    '/hello-gestion/php/user_notifications.php',
-                    {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type':
-                                'application/json'
-                        },
-                        credentials: 'include',
-                        body: JSON.stringify({
-                            action: 'mark_read',
-                            id: notificationId
-                        })
-                    }
-                );
+                if (notification.notification_type === 'generator_permission') {
+
+                    await fetch(
+                        '/hello-gestion/php/generator_permissions.php',
+                        {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type':
+                                    'application/json'
+                            },
+                            credentials: 'include',
+                            body: JSON.stringify({
+                                action: 'mark_notification_read',
+                                id: notification.id
+                            })
+                        }
+                    );
+
+                } else {
+
+                    await fetch(
+                        '/hello-gestion/php/user_notifications.php',
+                        {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type':
+                                    'application/json'
+                            },
+                            credentials: 'include',
+                            body: JSON.stringify({
+                                action: 'mark_read',
+                                id: notification.id
+                            })
+                        }
+                    );
+                }
 
                 await fetchNotifications();
 
@@ -233,20 +293,36 @@ const Sidebar = ({
 
             try {
 
-                await fetch(
-                    '/hello-gestion/php/user_notifications.php',
-                    {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type':
-                                'application/json'
-                        },
-                        credentials: 'include',
-                        body: JSON.stringify({
-                            action: 'mark_all_read'
-                        })
-                    }
-                );
+                await Promise.all([
+                    fetch(
+                        '/hello-gestion/php/user_notifications.php',
+                        {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type':
+                                    'application/json'
+                            },
+                            credentials: 'include',
+                            body: JSON.stringify({
+                                action: 'mark_all_read'
+                            })
+                        }
+                    ),
+                    fetch(
+                        '/hello-gestion/php/generator_permissions.php',
+                        {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type':
+                                    'application/json'
+                            },
+                            credentials: 'include',
+                            body: JSON.stringify({
+                                action: 'mark_all_notifications_read'
+                            })
+                        }
+                    )
+                ]);
 
                 await fetchNotifications();
 
@@ -269,26 +345,49 @@ const Sidebar = ({
 
             try {
 
-                const response = await fetch(
-                    '/hello-gestion/php/user_notifications.php',
-                    {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        credentials: 'include',
-                        body: JSON.stringify({
-                            action: 'clear_history'
-                        })
-                    }
-                );
+                const [stockResponse, rightsResponse] =
+                    await Promise.all([
+                        fetch(
+                            '/hello-gestion/php/user_notifications.php',
+                            {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type':
+                                        'application/json'
+                                },
+                                credentials: 'include',
+                                body: JSON.stringify({
+                                    action: 'clear_history'
+                                })
+                            }
+                        ),
+                        fetch(
+                            '/hello-gestion/php/generator_permissions.php',
+                            {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type':
+                                        'application/json'
+                                },
+                                credentials: 'include',
+                                body: JSON.stringify({
+                                    action: 'clear_notifications'
+                                })
+                            }
+                        )
+                    ]);
 
-                const data = await response.json();
+                const stockData = await stockResponse.json().catch(() => ({}));
+                const rightsData = await rightsResponse.json().catch(() => ({}));
 
-                if (!response.ok || !data.success) {
+                if (
+                    !stockResponse.ok ||
+                    !stockData.success ||
+                    !rightsResponse.ok ||
+                    !rightsData.success
+                ) {
                     alert(
-                        data.message ||
-                        'Impossible de vider l’historique.'
+                        'Impossible de vider complètement l’historique des notifications.'
                     );
                     return;
                 }
@@ -320,6 +419,10 @@ const Sidebar = ({
 
     const handleClaimNotification =
         async (notification) => {
+
+            if (notification.notification_type === 'generator_permission') {
+                return;
+            }
 
             if (notification.claimed_by) {
                 return;
@@ -381,13 +484,15 @@ const Sidebar = ({
             ) {
 
                 await markNotificationAsRead(
-                    notification.id
+                    notification
                 );
             }
 
             setShowNotifications(false);
 
-            onNavigate('inventory');
+            if (notification.notification_type !== 'generator_permission') {
+                onNavigate('inventory');
+            }
 
             onClose();
         };
@@ -834,7 +939,7 @@ const Sidebar = ({
                                                                     {notification.message}
                                                                 </p>
 
-                                                                {notification.claimed_by ? (
+                                                                {notification.notification_type === 'generator_permission' ? null : notification.claimed_by ? (
 
                                                                     <div className="mt-2 px-2.5 py-2 rounded-lg bg-white/5 border border-white/10">
                                                                         <p className="text-[11px] text-white/70">
@@ -1049,7 +1154,7 @@ const Sidebar = ({
                                                         {notification.message}
                                                     </p>
 
-                                                    {notification.claimed_by ? (
+                                                    {notification.notification_type === 'generator_permission' ? null : notification.claimed_by ? (
 
                                                         <p className="text-[11px] text-white/70 mt-2">
                                                             ✓ Prise en charge par{' '}

@@ -308,6 +308,44 @@ try {
         jsonResponse(true);
     }
 
+    /* ----------------------------------------------------------------------
+       MARK ALL NOTIFICATIONS READ
+       ---------------------------------------------------------------------- */
+    if ($action === 'mark_all_notifications_read') {
+        $stmt = $pdo->prepare("
+            UPDATE generator_permission_notifications
+            SET is_read = 1
+            WHERE user_id = ?
+              AND is_read = 0
+        ");
+
+        $stmt->execute([
+            (int)$user['id']
+        ]);
+
+        jsonResponse(true, [
+            'message' => 'Toutes les notifications de droits ont été marquées comme lues.'
+        ]);
+    }
+
+    /* ----------------------------------------------------------------------
+       CLEAR NOTIFICATIONS
+       ---------------------------------------------------------------------- */
+    if ($action === 'clear_notifications') {
+        $stmt = $pdo->prepare("
+            DELETE FROM generator_permission_notifications
+            WHERE user_id = ?
+        ");
+
+        $stmt->execute([
+            (int)$user['id']
+        ]);
+
+        jsonResponse(true, [
+            'message' => 'Historique des notifications de droits supprimé.'
+        ]);
+    }
+
     jsonResponse(
         false,
         [
