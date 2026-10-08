@@ -1614,35 +1614,51 @@ const Inventory = ({
                         "
                     >
 
-                        <span
-                            className={`
-                                text-sm
-                                font-semibold
+                        <div className="flex flex-col">
+                            <span
+                                className={`
+                                    text-sm
+                                    font-semibold
 
-                                ${
-                                    stockStatus.type ===
-                                    'disponible'
-                                        ? 'text-green-600'
-                                        : ''
-                                }
+                                    ${
+                                        stockStatus.type ===
+                                        'disponible'
+                                            ? 'text-green-600'
+                                            : ''
+                                    }
 
-                                ${
-                                    stockStatus.type ===
-                                    'faible'
-                                        ? 'text-yellow-600'
-                                        : ''
-                                }
+                                    ${
+                                        stockStatus.type ===
+                                        'faible'
+                                            ? 'text-yellow-600'
+                                            : ''
+                                    }
 
-                                ${
-                                    stockStatus.type ===
-                                    'rupture'
-                                        ? 'text-red-500'
-                                        : ''
-                                }
-                            `}
-                        >
-                            {stockStatus.label}
-                        </span>
+                                    ${
+                                        stockStatus.type ===
+                                        'rupture'
+                                            ? 'text-red-500'
+                                            : ''
+                                    }
+                                `}
+                            >
+                                {stockStatus.label}
+                            </span>
+
+                            {stockStatus.type === 'rupture' && item.rupture_date && (
+                                <span className="mt-1 text-xs font-semibold text-red-500">
+                                    🕐 {(() => {
+                                        const diff = Math.floor(
+                                            (Date.now() - new Date(item.rupture_date).getTime()) / 86400000
+                                        );
+
+                                        if (diff === 0) return "Rupture depuis aujourd'hui";
+                                        if (diff === 1) return 'Rupture depuis hier';
+                                        return `Rupture depuis ${diff} jour${diff > 1 ? 's' : ''}`;
+                                    })()}
+                                </span>
+                            )}
+                        </div>
 
 
                         <span
