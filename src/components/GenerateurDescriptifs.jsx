@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
     Copy,
     Check,
@@ -7,7 +7,10 @@ import {
     Plus,
     Trash2,
     CopyPlus,
-    ChevronDown
+    ChevronDown,
+    Pencil,
+    Settings,
+    X
 } from 'lucide-react';
 
 
@@ -567,6 +570,218 @@ const emptyConfig = () => ({
 });
 
 
+
+/* =========================================================
+   OPTIONS DE MOTORISATION
+========================================================= */
+
+const MOTORISATION_OPTIONS = [
+    'Électrique filaire',
+    'Électrique radio',
+    'Somfy IO',
+    'Somfy RTS',
+    'Solaire'
+];
+
+
+/* =========================================================
+   PERSONNALISATION DES RUBRIQUES
+========================================================= */
+
+const CUSTOM_STORAGE_KEY =
+    'helloGestion_generateurDescriptifs_personnalisation_v2';
+
+const emptyCustomisations = () => ({
+    groups: {},
+    products: {},
+    motorisations: {
+        overrides: {},
+        deleted: [],
+        added: []
+    }
+});
+
+const slugify = value =>
+    String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+
+const ensurePeriod = value => {
+    const clean = String(value || '').trim();
+    if (!clean) return '';
+    return /[.!?]$/.test(clean)
+        ? clean
+        : `${clean}.`;
+};
+
+// Pour les nouveaux types de pose, le descriptif est construit automatiquement
+// à partir du nom affiché : « Créneau » devient « en créneau ».
+const buildPosePhraseFromLabel = label => {
+    const clean = String(label || '').trim();
+    if (!clean) return '';
+
+    const lower = clean.toLowerCase();
+
+    if (/^(en|à|au|aux|sur|sous|entre|derrière|avec|sans)\b/.test(lower)) {
+        return lower;
+    }
+
+    return `en ${lower}`;
+};
+
+const getGroupCustom = (customisations, groupKey) =>
+    customisations.groups?.[groupKey] || {
+        overrides: {},
+        deleted: [],
+        added: []
+    };
+
+const getPoseCustom = (customisations, productId) =>
+    customisations.products?.[productId]?.pose || {
+        overrides: {},
+        deleted: [],
+        added: []
+    };
+
+const getEffectiveGroupOptions = (
+    customisations,
+    groupKey,
+    produit
+) => {
+    const base = GROUPES[groupKey];
+    if (!base) return [];
+
+    const custom = getGroupCustom(
+        customisations,
+        groupKey
+    );
+
+    const deleted = new Set(
+        custom.deleted || []
+    );
+
+    const options = base.options
+        .filter(option => !deleted.has(option.id))
+        .map(option => {
+            const override =
+                custom.overrides?.[option.id];
+
+            return {
+                id: option.id,
+                label:
+                    override?.label ||
+                    option.label,
+                phraseText:
+                    override?.phrase ||
+                    option.phrase(produit),
+                customPhrase:
+                    !!override?.phrase
+            };
+        });
+
+    (custom.added || []).forEach(option => {
+        options.push({
+            ...option,
+            phraseText: ensurePeriod(option.label),
+            customPhrase: true
+        });
+    });
+
+    return options;
+};
+
+const getEffectivePoseOptions = (
+    customisations,
+    product
+) => {
+    if (!product?.pose) return [];
+
+    const custom = getPoseCustom(
+        customisations,
+        product.id
+    );
+
+    const deleted = new Set(
+        custom.deleted || []
+    );
+
+    const options = product.pose
+        .filter(option => !deleted.has(option[0]))
+        .map(option => {
+            const override =
+                custom.overrides?.[option[0]];
+
+            const label =
+                override?.label ||
+                option[1];
+
+            return {
+                id: option[0],
+                label,
+                // Une option existante garde sa phrase métier.
+                // Si elle est modifiée, son descriptif suit automatiquement
+                // le nouveau nom.
+                phraseText:
+                    override?.label
+                        ? buildPosePhraseFromLabel(label)
+                        : option[2],
+                customPhrase: !!override?.label
+            };
+        });
+
+    (custom.added || []).forEach(option => {
+        options.push({
+            id: option.id,
+            label: option.label,
+            phraseText: buildPosePhraseFromLabel(
+                option.label
+            ),
+            customPhrase: true
+        });
+    });
+
+    return options;
+};
+
+const getEffectiveMotorisations = (
+    customisations
+) => {
+    const custom =
+        customisations.motorisations ||
+        {};
+
+    const deleted = new Set(
+        custom.deleted || []
+    );
+
+    const options = MOTORISATION_OPTIONS
+        .filter(
+            option =>
+                !deleted.has(option)
+        )
+        .map(option => ({
+            id: option,
+            label:
+                custom.overrides?.[option]
+                    ?.label ||
+                option
+        }));
+
+    (custom.added || []).forEach(
+        option => {
+            options.push({
+                id: option.id,
+                label: option.label
+            });
+        }
+    );
+
+    return options;
+};
+
 /* =========================================================
    OPTION CHECKBOX / RADIO
 ========================================================= */
@@ -575,51 +790,91 @@ function OptionRow({
     type,
     checked,
     onChange,
-    label
+    label,
+    onEdit,
+    onDelete,
+    showActions = true,
+    canEdit = true,
+    canDelete = true
 }) {
 
     return (
-        <button
-            type="button"
-            onClick={onChange}
-            className="w-full flex items-center gap-3 px-2.5 py-2 rounded-lg cursor-pointer select-none hover:bg-gray-50 transition-colors text-left"
-        >
+        <div className="w-full flex items-center gap-1 px-2.5 py-1.5 rounded-lg hover:bg-gray-50 transition-colors">
 
-            <span
-                className={`flex-none w-5 h-5 grid place-items-center border-2 transition-all ${
-                    type === 'radio'
-                        ? 'rounded-full'
-                        : 'rounded-md'
-                } ${
-                    checked
-                        ? 'bg-[#FFB103] border-[#FFB103]'
-                        : 'bg-white border-gray-300'
-                }`}
+            <button
+                type="button"
+                onClick={onChange}
+                className="flex-1 min-w-0 flex items-center gap-3 cursor-pointer select-none text-left"
             >
+                <span
+                    className={`flex-none w-5 h-5 grid place-items-center border-2 transition-all ${
+                        type === 'radio'
+                            ? 'rounded-full'
+                            : 'rounded-md'
+                    } ${
+                        checked
+                            ? 'bg-[#FFB103] border-[#FFB103]'
+                            : 'bg-white border-gray-300'
+                    }`}
+                >
+                    {checked && (
+                        <Check
+                            size={13}
+                            strokeWidth={3.5}
+                            className="text-[#1a1a1a]"
+                        />
+                    )}
+                </span>
 
-                {checked && (
-                    <Check
-                        size={13}
-                        strokeWidth={3.5}
-                        className="text-[#1a1a1a]"
-                    />
-                )}
+                <span
+                    className={`text-sm ${
+                        checked
+                            ? 'font-semibold text-gray-900'
+                            : 'text-gray-700'
+                    } truncate`}
+                >
+                    {label}
+                </span>
+            </button>
 
-            </span>
+            {showActions && (
+                <>
+                    {showActions && (
+                    <>
+                        <button
+                            type="button"
+                            onClick={onEdit}
+                            title={canEdit ? "Modifier" : "Modifier — droit requis"}
+                            className={`flex-none p-1.5 rounded-lg transition-colors ${
+                                canEdit
+                                    ? 'text-gray-400 hover:text-amber-700 hover:bg-amber-50'
+                                    : 'text-gray-300 hover:text-amber-700 hover:bg-amber-50'
+                            }`}
+                        >
+                            <Pencil size={14} />
+                        </button>
 
-            <span
-                className={`text-sm ${
-                    checked
-                        ? 'font-semibold text-gray-900'
-                        : 'text-gray-700'
-                }`}
-            >
-                {label}
-            </span>
+                        <button
+                            type="button"
+                            onClick={onDelete}
+                            title={canDelete ? "Supprimer" : "Supprimer — droit requis"}
+                            className={`flex-none p-1.5 rounded-lg transition-colors ${
+                                canDelete
+                                    ? 'text-gray-400 hover:text-red-600 hover:bg-red-50'
+                                    : 'text-gray-300 hover:text-red-600 hover:bg-red-50'
+                            }`}
+                        >
+                            <Trash2 size={14} />
+                        </button>
+                    </>
+                    )}
+                </>
+            )}
 
-        </button>
+        </div>
     );
 }
+
 
 
 /* =========================================================
@@ -634,6 +889,8 @@ function genererProduit(item) {
         unit,
         repere,
         pose,
+        poseOptions,
+        groupOptions,
         radios,
         checks,
         motorisation,
@@ -654,9 +911,6 @@ function genererProduit(item) {
             ? `${produit.label}s`
             : produit.label;
 
-
-    /* Produit */
-
     let ligneProduit =
         `Pose de ${quantite} ${nomProduit.toLowerCase()}`;
 
@@ -667,12 +921,19 @@ function genererProduit(item) {
         ligneProduit += ` (${unit})`;
     }
 
-    parts.push(
-        `${ligneProduit}.`
-    );
+    // Le type de pose complète directement la phrase principale.
+    // Exemple : option « Créneau » -> « Pose de 1 fenêtre en créneau. »
+    if (pose && poseOptions?.length) {
+        const option = poseOptions.find(
+            item => item.id === pose
+        );
 
+        if (option?.phraseText) {
+            ligneProduit += ` ${String(option.phraseText).trim()}`;
+        }
+    }
 
-    /* Repère */
+    parts.push(`${ligneProduit}.`);
 
     if (repere) {
         parts.push(
@@ -680,104 +941,73 @@ function genererProduit(item) {
         );
     }
 
+    const deposes =
+        groupOptions?.depose || [];
 
-    /* Dépose */
-
-    if (checks?.depose) {
-        parts.push(
-            `Dépose de votre ${produit.nom} existant${produit.genre === 'f' ? 'e' : ''}.`
-        );
-    }
-
-    if (checks?.evacuation) {
-        parts.push(
-            "Évacuation de l'ancien matériel."
-        );
-    }
-
-    if (checks?.depose_totale) {
-        parts.push(
-            'Dépose totale.'
-        );
-    }
-
-    if (checks?.conservation_dormant) {
-        parts.push(
-            'Conservation du dormant existant.'
-        );
-    }
-
-    if (checks?.depose_motorisation) {
-        parts.push(
-            'Dépose de la motorisation existante.'
-        );
-    }
-
-
-    /* Type de pose */
-
-    if (
-        pose &&
-        produit.pose
-    ) {
-
-        const option =
-            produit.pose.find(
-                option =>
-                    option[0] === pose
-            );
-
-        if (option) {
-            parts.push(
-                `Pose ${option[2]}.`
-            );
-        }
-    }
-
-
-    /* Support */
-
-    GROUPES.support.options.forEach(
-        option => {
-
+    deposes.forEach(option => {
+        if (checks?.[option.id]) {
             if (
-                checks?.[
-                    option.id
-                ]
+                option.id === 'depose' &&
+                !option.customPhrase
             ) {
                 parts.push(
-                    option.phrase(
-                        produit
+                    `Dépose de votre ${produit.nom} existant${produit.genre === 'f' ? 'e' : ''}.`
+                );
+            } else {
+                parts.push(
+                    ensurePeriod(
+                        option.phraseText
+                    )
+                );
+            }
+        }
+    });
+
+    [
+        'support',
+        'raccord',
+        'moto',
+        'finitions',
+        'chantier',
+        'reserves',
+        'sav'
+    ].forEach(groupKey => {
+
+        const options =
+            groupOptions?.[groupKey] || [];
+
+        const groupType =
+            GROUPES[groupKey]?.type;
+
+        if (groupType === 'radio') {
+            const selected =
+                options.find(
+                    option =>
+                        option.id ===
+                        radios?.[groupKey]
+                );
+
+            if (selected) {
+                parts.push(
+                    ensurePeriod(
+                        selected.phraseText
                     )
                 );
             }
 
+            return;
         }
-    );
 
-
-    /* Raccordement */
-
-    if (radios?.raccord) {
-
-        const option =
-            GROUPES.raccord.options.find(
-                option =>
-                    option.id ===
-                    radios.raccord
-            );
-
-        if (option) {
-            parts.push(
-                option.phrase(
-                    produit
-                )
-            );
-        }
-    }
-
-
-    /* Motorisation */
+        options.forEach(option => {
+            if (checks?.[option.id]) {
+                parts.push(
+                    ensurePeriod(
+                        option.phraseText
+                    )
+                );
+            }
+        });
+    });
 
     if (motorisation) {
         parts.push(
@@ -785,120 +1015,11 @@ function genererProduit(item) {
         );
     }
 
-
-    GROUPES.moto.options.forEach(
-        option => {
-
-            if (
-                checks?.[
-                    option.id
-                ]
-            ) {
-                parts.push(
-                    option.phrase(
-                        produit
-                    )
-                );
-            }
-
-        }
-    );
-
-
-    /* Finitions */
-
-    GROUPES.finitions.options.forEach(
-        option => {
-
-            if (
-                checks?.[
-                    option.id
-                ]
-            ) {
-                parts.push(
-                    option.phrase(
-                        produit
-                    )
-                );
-            }
-
-        }
-    );
-
-
-    /* Chantier */
-
-    GROUPES.chantier.options.forEach(
-        option => {
-
-            if (
-                checks?.[
-                    option.id
-                ]
-            ) {
-                parts.push(
-                    option.phrase(
-                        produit
-                    )
-                );
-            }
-
-        }
-    );
-
-
-    /* Réserves */
-
-    GROUPES.reserves.options.forEach(
-        option => {
-
-            if (
-                checks?.[
-                    option.id
-                ]
-            ) {
-                parts.push(
-                    option.phrase(
-                        produit
-                    )
-                );
-            }
-
-        }
-    );
-
-
-    /* SAV */
-
-    GROUPES.sav.options.forEach(
-        option => {
-
-            if (
-                checks?.[
-                    option.id
-                ]
-            ) {
-                parts.push(
-                    option.phrase(
-                        produit
-                    )
-                );
-            }
-
-        }
-    );
-
-
-    /* Particularité */
-
     if (particular) {
         parts.push(
             `Particularité chantier : ${particular}.`
         );
     }
-
-
-    /* Non compris */
 
     if (excluded) {
         parts.push(
@@ -906,9 +1027,9 @@ function genererProduit(item) {
         );
     }
 
-
     return parts.join(' ');
 }
+
 
 
 /* =========================================================
@@ -936,6 +1057,230 @@ const GenerateurDescriptifs = () => {
     const [copied, setCopied] =
         useState(false);
 
+    const [customisations, setCustomisations] =
+        useState(() => {
+            try {
+                const saved =
+                    localStorage.getItem(
+                        CUSTOM_STORAGE_KEY
+                    );
+
+                return saved
+                    ? {
+                        ...emptyCustomisations(),
+                        ...JSON.parse(saved)
+                    }
+                    : emptyCustomisations();
+            } catch {
+                return emptyCustomisations();
+            }
+        });
+
+    const [editor, setEditor] =
+        useState(null);
+
+    /* =====================================================
+       DROITS GÉNÉRATEUR
+    ===================================================== */
+
+    const [generatorPermissions, setGeneratorPermissions] =
+        useState({
+            can_add: false,
+            can_edit: false,
+            can_delete: false
+        });
+
+    const [isGeneratorAdmin, setIsGeneratorAdmin] =
+        useState(false);
+
+    const [permissionUsers, setPermissionUsers] =
+        useState([]);
+
+    const [permissionsManagerOpen, setPermissionsManagerOpen] =
+        useState(false);
+
+    const [permissionsLoading, setPermissionsLoading] =
+        useState(false);
+
+    const [permissionsSavingId, setPermissionsSavingId] =
+        useState(null);
+
+    const [permissionsError, setPermissionsError] =
+        useState('');
+
+    const [permissionToast, setPermissionToast] =
+        useState('');
+
+    const showPermissionDenied = useCallback((action) => {
+        const message =
+            `Vous n'avez pas les droits pour ${action}. Veuillez demander les droits à Lotfi pour réaliser cette action.`;
+
+        setPermissionToast(message);
+
+        window.clearTimeout(
+            window.__generatorPermissionToastTimer
+        );
+
+        window.__generatorPermissionToastTimer =
+            window.setTimeout(() => {
+                setPermissionToast('');
+            }, 4500);
+    }, []);
+
+    const PERMISSIONS_API =
+        '/hello-gestion/php/generator_permissions.php';
+
+    const loadMyGeneratorPermissions = useCallback(async () => {
+        try {
+            const response = await fetch(
+                `${PERMISSIONS_API}?action=me`,
+                {
+                    method: 'GET',
+                    credentials: 'include',
+                    cache: 'no-store'
+                }
+            );
+
+            if (!response.ok) return;
+
+            const data = await response.json();
+
+            if (data.success) {
+                setIsGeneratorAdmin(!!data.is_admin);
+                setGeneratorPermissions({
+                    can_add: !!data.permissions?.can_add,
+                    can_edit: !!data.permissions?.can_edit,
+                    can_delete: !!data.permissions?.can_delete
+                });
+            }
+        } catch (error) {
+            console.error(
+                'Erreur récupération droits générateur :',
+                error
+            );
+        }
+    }, []);
+
+    useEffect(() => {
+        loadMyGeneratorPermissions();
+    }, [loadMyGeneratorPermissions]);
+
+    const loadPermissionUsers = useCallback(async () => {
+        setPermissionsLoading(true);
+        setPermissionsError('');
+
+        try {
+            const response = await fetch(
+                `${PERMISSIONS_API}?action=list`,
+                {
+                    method: 'GET',
+                    credentials: 'include',
+                    cache: 'no-store'
+                }
+            );
+
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                throw new Error(
+                    data.message || 'Impossible de récupérer les utilisateurs.'
+                );
+            }
+
+            setPermissionUsers(
+                Array.isArray(data.users)
+                    ? data.users
+                    : []
+            );
+        } catch (error) {
+            setPermissionsError(
+                error?.message ||
+                'Erreur lors du chargement des droits.'
+            );
+        } finally {
+            setPermissionsLoading(false);
+        }
+    }, []);
+
+    const updatePermissionUser = (
+        userId,
+        field,
+        value
+    ) => {
+        setPermissionUsers(current =>
+            current.map(user =>
+                Number(user.id) === Number(userId)
+                    ? {
+                        ...user,
+                        permissions: {
+                            ...user.permissions,
+                            [field]: !!value
+                        }
+                    }
+                    : user
+            )
+        );
+    };
+
+    const saveUserPermissions = async user => {
+        setPermissionsSavingId(user.id);
+        setPermissionsError('');
+
+        try {
+            const response = await fetch(
+                PERMISSIONS_API,
+                {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: 'save',
+                        user_id: Number(user.id),
+                        can_add: !!user.permissions?.can_add,
+                        can_edit: !!user.permissions?.can_edit,
+                        can_delete: !!user.permissions?.can_delete
+                    })
+                }
+            );
+
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                throw new Error(
+                    data.message || 'Impossible d’enregistrer les droits.'
+                );
+            }
+
+            setPermissionToast(
+                `Droits de ${user.name || 'l’utilisateur'} enregistrés.`
+            );
+
+            setTimeout(() => {
+                setPermissionToast('');
+            }, 2500);
+        } catch (error) {
+            setPermissionsError(
+                error?.message ||
+                'Erreur lors de l’enregistrement des droits.'
+            );
+        } finally {
+            setPermissionsSavingId(null);
+        }
+    };
+
+    useEffect(() => {
+        try {
+            localStorage.setItem(
+                CUSTOM_STORAGE_KEY,
+                JSON.stringify(customisations)
+            );
+        } catch {
+            // Rien
+        }
+    }, [customisations]);
+
 
     const produit =
         useMemo(
@@ -948,6 +1293,458 @@ const GenerateurDescriptifs = () => {
             [produitId]
         );
 
+
+    const poseOptions =
+        useMemo(
+            () =>
+                getEffectivePoseOptions(
+                    customisations,
+                    produit
+                ),
+            [customisations, produit]
+        );
+
+    const groupOptions =
+        useMemo(
+            () => {
+                const result = {};
+
+                (produit?.groupes || []).forEach(
+                    groupKey => {
+                        result[groupKey] =
+                            getEffectiveGroupOptions(
+                                customisations,
+                                groupKey,
+                                produit
+                            );
+                    }
+                );
+
+                return result;
+            },
+            [customisations, produit]
+        );
+
+    const motorisationOptions =
+        useMemo(
+            () =>
+                getEffectiveMotorisations(
+                    customisations
+                ),
+            [customisations]
+        );
+
+
+    /* =====================================================
+       GESTION DES RUBRIQUES
+    ===================================================== */
+
+    const openEditor = ({
+        scope,
+        productId = null,
+        groupKey = null,
+        id = null,
+        label = '',
+    }) => {
+        setEditor({
+            scope,
+            productId,
+            groupKey,
+            id,
+            label,
+            isNew: !id
+        });
+    };
+
+    const saveEditor = () => {
+        if (!editor) return;
+
+        const label =
+            editor.label.trim();
+
+        if (!label) {
+            return;
+        }
+
+        if (editor.isNew && !isGeneratorAdmin && !generatorPermissions.can_add) {
+            showPermissionDenied('ajouter cette option');
+            return;
+        }
+
+        if (!editor.isNew && !isGeneratorAdmin && !generatorPermissions.can_edit) {
+            showPermissionDenied('modifier cette option');
+            return;
+        }
+
+        const next = {
+            ...customisations,
+            groups: {
+                ...(customisations.groups || {})
+            },
+            products: {
+                ...(customisations.products || {})
+            },
+            motorisations: {
+                ...(customisations.motorisations || {})
+            }
+        };
+
+        const makeId = () =>
+            `${slugify(label) || 'option'}-${Date.now()}`;
+
+        if (editor.scope === 'pose') {
+            const current =
+                getPoseCustom(
+                    customisations,
+                    editor.productId
+                );
+
+            const data = {
+                overrides: {
+                    ...(current.overrides || {})
+                },
+                deleted: [
+                    ...(current.deleted || [])
+                ],
+                added: [
+                    ...(current.added || [])
+                ]
+            };
+
+            if (editor.isNew) {
+                data.added.push({
+                    id: makeId(),
+                    label
+                });
+            } else {
+                const addedIndex =
+                    data.added.findIndex(
+                        option =>
+                            option.id ===
+                            editor.id
+                    );
+
+                if (addedIndex >= 0) {
+                    data.added[addedIndex] = {
+                        ...data.added[addedIndex],
+                        label
+                    };
+                } else {
+                    data.overrides[editor.id] = {
+                        label
+                    };
+                }
+            }
+
+            next.products[editor.productId] = {
+                ...(next.products[editor.productId] || {}),
+                pose: data
+            };
+        }
+
+        if (editor.scope === 'group') {
+            const current =
+                getGroupCustom(
+                    customisations,
+                    editor.groupKey
+                );
+
+            const data = {
+                overrides: {
+                    ...(current.overrides || {})
+                },
+                deleted: [
+                    ...(current.deleted || [])
+                ],
+                added: [
+                    ...(current.added || [])
+                ]
+            };
+
+            if (editor.isNew) {
+                data.added.push({
+                    id: makeId(),
+                    label
+                });
+            } else {
+                const addedIndex =
+                    data.added.findIndex(
+                        option =>
+                            option.id ===
+                            editor.id
+                    );
+
+                if (addedIndex >= 0) {
+                    data.added[addedIndex] = {
+                        ...data.added[addedIndex],
+                        label
+                    };
+                } else {
+                    data.overrides[editor.id] = {
+                        label
+                    };
+                }
+            }
+
+            next.groups[editor.groupKey] =
+                data;
+        }
+
+        if (
+            editor.scope ===
+            'motorisation'
+        ) {
+            const current =
+                customisations.motorisations ||
+                {};
+
+            const data = {
+                overrides: {
+                    ...(current.overrides || {})
+                },
+                deleted: [
+                    ...(current.deleted || [])
+                ],
+                added: [
+                    ...(current.added || [])
+                ]
+            };
+
+            if (editor.isNew) {
+                data.added.push({
+                    id: makeId(),
+                    label,
+                    phrase: label
+                });
+            } else {
+                const addedIndex =
+                    data.added.findIndex(
+                        option =>
+                            option.id ===
+                            editor.id
+                    );
+
+                if (addedIndex >= 0) {
+                    data.added[addedIndex] = {
+                        ...data.added[addedIndex],
+                        label
+                    };
+                } else {
+                    data.overrides[editor.id] = {
+                        label
+                    };
+                }
+            }
+
+            next.motorisations =
+                data;
+        }
+
+        setCustomisations(next);
+        setEditor(null);
+        setManualText(null);
+        setCopied(false);
+    };
+
+    const deleteRubrique = ({
+        scope,
+        productId = null,
+        groupKey = null,
+        id
+    }) => {
+        if (!isGeneratorAdmin && !generatorPermissions.can_delete) {
+            showPermissionDenied('supprimer cette option');
+            return;
+        }
+
+        if (
+            !window.confirm(
+                'Supprimer cette rubrique ?'
+            )
+        ) {
+            return;
+        }
+
+        const next = {
+            ...customisations,
+            groups: {
+                ...(customisations.groups || {})
+            },
+            products: {
+                ...(customisations.products || {})
+            },
+            motorisations: {
+                ...(customisations.motorisations || {})
+            }
+        };
+
+        if (scope === 'pose') {
+            const current =
+                getPoseCustom(
+                    customisations,
+                    productId
+                );
+
+            const added =
+                (current.added || [])
+                    .filter(
+                        option =>
+                            option.id !== id
+                    );
+
+            const deleted =
+                (current.deleted || [])
+                    .includes(id)
+                    ? current.deleted || []
+                    : [
+                        ...(current.deleted || []),
+                        id
+                    ];
+
+            const overrides = {
+                ...(current.overrides || {})
+            };
+
+            delete overrides[id];
+
+            next.products[productId] = {
+                ...(next.products[productId] || {}),
+                pose: {
+                    overrides,
+                    deleted,
+                    added
+                }
+            };
+
+            if (
+                config.radios?.pose === id
+            ) {
+                setConfig(currentConfig => ({
+                    ...currentConfig,
+                    radios: {
+                        ...currentConfig.radios,
+                        pose: ''
+                    }
+                }));
+            }
+        }
+
+        if (scope === 'group') {
+            const current =
+                getGroupCustom(
+                    customisations,
+                    groupKey
+                );
+
+            const added =
+                (current.added || [])
+                    .filter(
+                        option =>
+                            option.id !== id
+                    );
+
+            const deleted =
+                (current.deleted || [])
+                    .includes(id)
+                    ? current.deleted || []
+                    : [
+                        ...(current.deleted || []),
+                        id
+                    ];
+
+            const overrides = {
+                ...(current.overrides || {})
+            };
+
+            delete overrides[id];
+
+            next.groups[groupKey] = {
+                overrides,
+                deleted,
+                added
+            };
+        }
+
+        if (
+            scope ===
+            'motorisation'
+        ) {
+            const current =
+                customisations.motorisations ||
+                {};
+
+            next.motorisations = {
+                overrides: {
+                    ...(current.overrides || {})
+                },
+                deleted: [
+                    ...(
+                        current.deleted || []
+                    ).filter(
+                        value =>
+                            value !== id
+                    ),
+                    ...(MOTORISATION_OPTIONS.includes(id)
+                        ? [id]
+                        : [])
+                ],
+                added: (
+                    current.added || []
+                ).filter(
+                    option =>
+                        option.id !== id
+                )
+            };
+
+            if (
+                config.motorisation === id
+            ) {
+                setConfig(currentConfig => ({
+                    ...currentConfig,
+                    motorisation: ''
+                }));
+            }
+        }
+
+        setCustomisations(next);
+        setManualText(null);
+        setCopied(false);
+    };
+
+    const addPose = () => {
+        if (!isGeneratorAdmin && !generatorPermissions.can_add) {
+            showPermissionDenied('ajouter une option');
+            return;
+        }
+
+        openEditor({
+            scope: 'pose',
+            productId: produitId
+        });
+    };
+
+    const addGroupOption = groupKey => {
+        if (!isGeneratorAdmin && !generatorPermissions.can_add) {
+            showPermissionDenied('ajouter une option');
+            return;
+        }
+
+        openEditor({
+            scope: 'group',
+            groupKey
+        });
+    };
+
+    const addMotorisation = () => {
+        if (!isGeneratorAdmin && !generatorPermissions.can_add) {
+            showPermissionDenied('ajouter une motorisation');
+            return;
+        }
+
+        openEditor({
+            scope: 'motorisation'
+        });
+    };
 
     /* =====================================================
        CHANGER PRODUIT
@@ -1072,7 +1869,27 @@ const GenerateurDescriptifs = () => {
 
                     radios: {
                         ...config.radios
-                    }
+                    },
+
+                    poseOptions: poseOptions.map(
+                        option => ({
+                            ...option
+                        })
+                    ),
+
+                    groupOptions: Object.fromEntries(
+                        Object.entries(groupOptions)
+                            .map(
+                                ([key, options]) => [
+                                    key,
+                                    options.map(
+                                        option => ({
+                                            ...option
+                                        })
+                                    )
+                                ]
+                            )
+                    )
                 }
             ]
         );
@@ -1107,7 +1924,27 @@ const GenerateurDescriptifs = () => {
 
                     radios: {
                         ...config.radios
-                    }
+                    },
+
+                    poseOptions: poseOptions.map(
+                        option => ({
+                            ...option
+                        })
+                    ),
+
+                    groupOptions: Object.fromEntries(
+                        Object.entries(groupOptions)
+                            .map(
+                                ([key, options]) => [
+                                    key,
+                                    options.map(
+                                        option => ({
+                                            ...option
+                                        })
+                                    )
+                                ]
+                            )
+                    )
                 }
             ]
         );
@@ -1415,6 +2252,21 @@ const GenerateurDescriptifs = () => {
 
             </div>
 
+            {isGeneratorAdmin && (
+                <div className="mb-5">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setPermissionsManagerOpen(true);
+                            loadPermissionUsers();
+                        }}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#1a1a1a] text-white font-bold text-sm hover:bg-black transition-colors"
+                    >
+                        <Settings size={16} />
+                        Gestion des droits
+                    </button>
+                </div>
+            )}
 
             {/* CONTENU */}
 
@@ -1624,128 +2476,143 @@ const GenerateurDescriptifs = () => {
                     {/* TYPE DE POSE */}
 
                     {produit.pose && (
-
                         <div className="bg-white border border-gray-200 rounded-2xl p-5">
 
-                            <h2 className="text-xs font-bold uppercase tracking-wider text-amber-700 mb-2">
+                            <div className="flex items-center justify-between mb-2">
+                                <h2 className="text-xs font-bold uppercase tracking-wider text-amber-700">
+                                    Type de pose
+                                    <span className="text-gray-400 font-medium normal-case tracking-normal">
+                                        {' '}— un seul
+                                    </span>
+                                </h2>
 
-                                Type de pose
+                                <button
+                                    type="button"
+                                    onClick={addPose}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FFB103] text-[#1a1a1a] text-xs font-bold hover:bg-amber-400 transition-colors"
+                                >
+                                    <Plus size={14} />
+                                    Ajouter
+                                </button>
+                            </div>
 
-                                <span className="text-gray-400 font-medium normal-case tracking-normal">
-                                    {' '}— un seul
-                                </span>
-
-                            </h2>
-
+                            <p className="text-[11px] text-gray-400 mb-2">
+                                Ajoutez, modifiez ou supprimez les types de pose.
+                            </p>
 
                             <div className="grid md:grid-cols-2">
-
-                                {produit.pose.map(
+                                {poseOptions.map(
                                     option => (
-
                                         <OptionRow
-                                            key={
-                                                option[0]
-                                            }
+                                            key={option.id}
                                             type="radio"
-                                            label={
-                                                option[1]
-                                            }
+                                            label={option.label}
                                             checked={
-                                                config
-                                                    .radios
-                                                    .pose ===
-                                                option[0]
+                                                config.radios.pose ===
+                                                option.id
                                             }
                                             onChange={() =>
                                                 setRadio(
                                                     'pose',
-                                                    option[0]
+                                                    option.id
                                                 )
                                             }
+                                            onEdit={() =>
+                                                openEditor({
+                                                    scope: 'pose',
+                                                    productId: produitId,
+                                                    id: option.id,
+                                                    label: option.label,
+                                                    phrase: option.phraseText
+                                                })
+                                            }
+                                            onDelete={() =>
+                                                deleteRubrique({
+                                                    scope: 'pose',
+                                                    productId: produitId,
+                                                    id: option.id
+                                                })
+                                            }
+                                        canEdit={isGeneratorAdmin || generatorPermissions.can_edit}
+                                        canDelete={isGeneratorAdmin || generatorPermissions.can_delete}
                                         />
-
                                     )
                                 )}
-
                             </div>
 
                         </div>
-
                     )}
+
 
 
                     {/* GROUPES */}
 
                     {produit.groupes.map(
                         groupKey => {
-
                             const groupe =
-                                GROUPES[
-                                    groupKey
-                                ];
+                                GROUPES[groupKey];
 
                             if (!groupe) {
                                 return null;
                             }
 
                             const isRadio =
-                                groupe.type ===
-                                'radio';
+                                groupe.type === 'radio';
 
+                            const options =
+                                groupOptions[groupKey] || [];
 
                             return (
-
                                 <div
-                                    key={
-                                        groupKey
-                                    }
+                                    key={groupKey}
                                     className="bg-white border border-gray-200 rounded-2xl p-5"
                                 >
 
-                                    <h2 className="text-xs font-bold uppercase tracking-wider text-amber-700 mb-2">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <h2 className="text-xs font-bold uppercase tracking-wider text-amber-700">
+                                            {groupe.titre}
 
-                                        {
-                                            groupe.titre
-                                        }
+                                            {isRadio && (
+                                                <span className="text-gray-400 font-medium normal-case tracking-normal">
+                                                    {' '}— un seul
+                                                </span>
+                                            )}
+                                        </h2>
 
-                                        {isRadio && (
-                                            <span className="text-gray-400 font-medium normal-case tracking-normal">
-                                                {' '}— un seul
-                                            </span>
-                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                addGroupOption(
+                                                    groupKey
+                                                )
+                                            }
+                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FFB103] text-[#1a1a1a] text-xs font-bold hover:bg-amber-400 transition-colors"
+                                        >
+                                            <Plus size={14} />
+                                            Ajouter
+                                        </button>
+                                    </div>
 
-                                    </h2>
-
+                                    <p className="text-[11px] text-gray-400 mb-2">
+                                        Ajoutez, modifiez ou supprimez les options de cette rubrique.
+                                    </p>
 
                                     <div className="grid md:grid-cols-2">
-
-                                        {groupe.options.map(
+                                        {options.map(
                                             option => (
-
                                                 <OptionRow
-                                                    key={
-                                                        option.id
-                                                    }
+                                                    key={option.id}
                                                     type={
                                                         isRadio
                                                             ? 'radio'
                                                             : 'checkbox'
                                                     }
-                                                    label={
-                                                        option.label
-                                                    }
+                                                    label={option.label}
                                                     checked={
                                                         isRadio
-                                                            ? config
-                                                                .radios[
-                                                                    groupKey
-                                                                ] ===
+                                                            ? config.radios[groupKey] ===
                                                               option.id
-                                                            : !!config
-                                                                .checks[
-                                                                    option.id
-                                                                ]
+                                                            : !!config.checks[option.id]
                                                     }
                                                     onChange={() =>
                                                         isRadio
@@ -1757,19 +2624,34 @@ const GenerateurDescriptifs = () => {
                                                                 option.id
                                                             )
                                                     }
+                                                    onEdit={() =>
+                                                        openEditor({
+                                                            scope: 'group',
+                                                            groupKey,
+                                                            id: option.id,
+                                                            label: option.label,
+                                                            phrase: option.phraseText
+                                                        })
+                                                    }
+                                                    onDelete={() =>
+                                                        deleteRubrique({
+                                                            scope: 'group',
+                                                            groupKey,
+                                                            id: option.id
+                                                        })
+                                                    }
+                                                    canEdit={isGeneratorAdmin || generatorPermissions.can_edit}
+                                                    canDelete={isGeneratorAdmin || generatorPermissions.can_delete}
                                                 />
-
                                             )
                                         )}
-
                                     </div>
 
                                 </div>
-
                             );
-
                         }
                     )}
+
 
 
                     {/* MOTORISATION */}
@@ -1777,57 +2659,81 @@ const GenerateurDescriptifs = () => {
                     {produit.groupes.includes(
                         'moto'
                     ) && (
-
                         <div className="bg-white border border-gray-200 rounded-2xl p-5">
 
-                            <h2 className="text-xs font-bold uppercase tracking-wider text-amber-700 mb-3">
-                                Type de motorisation
-                            </h2>
+                            <div className="flex items-center justify-between mb-3">
+                                <h2 className="text-xs font-bold uppercase tracking-wider text-amber-700">
+                                    Type de motorisation
+                                </h2>
 
+                                <button
+                                    type="button"
+                                    onClick={addMotorisation}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FFB103] text-[#1a1a1a] text-xs font-bold hover:bg-amber-400 transition-colors"
+                                >
+                                    <Plus size={14} />
+                                    Ajouter
+                                </button>
+                            </div>
 
-                            <select
-                                value={
-                                    config.motorisation
-                                }
-                                onChange={
-                                    e =>
+                            <div className="space-y-1">
+                                <OptionRow
+                                    type="radio"
+                                    label="Aucune / manuel"
+                                    checked={
+                                        !config.motorisation
+                                    }
+                                    onChange={() =>
                                         setField(
                                             'motorisation',
-                                            e.target.value
+                                            ''
                                         )
-                                }
-                                className="w-full appearance-none px-3 py-2.5 rounded-xl border border-gray-200 text-sm"
-                            >
+                                    }
+                                    onEdit={() => {}}
+                                    onDelete={() => {}}
+                                    showActions={false}
+                                />
 
-                                <option value="">
-                                    Aucune / manuel
-                                </option>
-
-                                <option>
-                                    Électrique filaire
-                                </option>
-
-                                <option>
-                                    Électrique radio
-                                </option>
-
-                                <option>
-                                    Somfy IO
-                                </option>
-
-                                <option>
-                                    Somfy RTS
-                                </option>
-
-                                <option>
-                                    Solaire
-                                </option>
-
-                            </select>
+                                {motorisationOptions.map(
+                                    option => (
+                                        <OptionRow
+                                            key={option.id}
+                                            type="radio"
+                                            label={option.label}
+                                            checked={
+                                                config.motorisation ===
+                                                option.label
+                                            }
+                                            onChange={() =>
+                                                setField(
+                                                    'motorisation',
+                                                    option.label
+                                                )
+                                            }
+                                            onEdit={() =>
+                                                openEditor({
+                                                    scope: 'motorisation',
+                                                    id: option.id,
+                                                    label: option.label,
+                                                    phrase: option.label
+                                                })
+                                            }
+                                            onDelete={() =>
+                                                deleteRubrique({
+                                                    scope: 'motorisation',
+                                                    id: option.id
+                                                })
+                                            }
+                                        canEdit={isGeneratorAdmin || generatorPermissions.can_edit}
+                                        canDelete={isGeneratorAdmin || generatorPermissions.can_delete}
+                                        />
+                                    )
+                                )}
+                            </div>
 
                         </div>
-
                     )}
+
 
 
                     {/* PARTICULARITÉS */}
@@ -1976,9 +2882,9 @@ const GenerateurDescriptifs = () => {
                                     ) => {
 
                                         const pose =
-                                            item.produit.pose?.find(
-                                                p =>
-                                                    p[0] ===
+                                            item.poseOptions?.find(
+                                                option =>
+                                                    option.id ===
                                                     item.radios.pose
                                             );
 
@@ -2011,7 +2917,7 @@ const GenerateurDescriptifs = () => {
                                                     <div className="text-xs text-gray-500 mt-1">
 
                                                         {
-                                                            pose?.[1] ||
+                                                            pose?.label ||
                                                             'Configuration à préciser'
                                                         }
 
@@ -2156,6 +3062,168 @@ const GenerateurDescriptifs = () => {
                 </aside>
 
             </div>
+
+
+            {permissionToast && (
+                <div
+                    role="alert"
+                    className="fixed top-5 right-5 z-[120] max-w-md bg-red-600 text-white px-5 py-4 rounded-xl shadow-2xl text-sm font-semibold leading-relaxed border border-red-700"
+                >
+                    {permissionToast}
+                </div>
+            )}
+
+            {permissionsManagerOpen && isGeneratorAdmin && (
+                <div className="fixed inset-0 z-[110] bg-black/50 flex items-center justify-center p-4 overflow-hidden">
+                    <div className="w-full max-w-4xl max-h-[90vh] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+                        <div className="flex-shrink-0 flex items-center justify-between px-5 py-4 border-b border-gray-200 bg-white">
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-900">Gestion des droits</h3>
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Lotfi est le seul administrateur de cette gestion.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setPermissionsManagerOpen(false)}
+                                className="p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 min-h-0 overflow-y-auto p-5">
+                            {permissionsError && (
+                                <div className="mb-4 rounded-xl bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm">
+                                    {permissionsError}
+                                </div>
+                            )}
+
+                            {permissionsLoading ? (
+                                <div className="py-10 text-center text-sm text-gray-500">Chargement des utilisateurs…</div>
+                            ) : (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-sm">
+                                        <thead className="sticky top-0 z-10 bg-white">
+                                            <tr className="text-left border-b border-gray-200">
+                                                <th className="py-3 pr-4 font-bold">Utilisateur</th>
+                                                <th className="py-3 px-3 text-center font-bold">Ajouter</th>
+                                                <th className="py-3 px-3 text-center font-bold">Modifier</th>
+                                                <th className="py-3 px-3 text-center font-bold">Supprimer</th>
+                                                <th className="py-3 pl-3 text-right font-bold">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {permissionUsers.map(user => (
+                                                <tr key={user.id} className="border-b border-gray-100">
+                                                    <td className="py-3 pr-4">
+                                                        <div className="font-semibold text-gray-900">{user.name}</div>
+                                                        <div className="text-xs text-gray-500">{user.position || user.role || ''}</div>
+                                                    </td>
+                                                    {['can_add','can_edit','can_delete'].map(field => (
+                                                        <td key={field} className="py-3 px-3 text-center">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={!!user.permissions?.[field]}
+                                                                onChange={e => updatePermissionUser(user.id, field, e.target.checked)}
+                                                                className="w-4 h-4 accent-[#FFB103] cursor-pointer"
+                                                            />
+                                                        </td>
+                                                    ))}
+                                                    <td className="py-3 pl-3 text-right">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => saveUserPermissions(user)}
+                                                            disabled={permissionsSavingId === user.id}
+                                                            className="px-3 py-2 rounded-lg bg-[#FFB103] text-[#1a1a1a] text-xs font-bold disabled:opacity-50"
+                                                        >
+                                                            {permissionsSavingId === user.id ? 'Enregistrement…' : 'Enregistrer'}
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {editor && (
+                <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4">
+                    <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl p-5">
+
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-base font-bold text-gray-900">
+                                {editor.isNew
+                                    ? 'Ajouter une rubrique'
+                                    : 'Modifier la rubrique'}
+                            </h3>
+
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    setEditor(null)
+                                }
+                                className="text-gray-400 hover:text-gray-700 text-xl"
+                            >
+                                ×
+                            </button>
+                        </div>
+
+                        <div className="space-y-4">
+
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    Nom affiché
+                                </label>
+
+                                <input
+                                    autoFocus
+                                    value={editor.label}
+                                    onChange={e =>
+                                        setEditor(
+                                            current => ({
+                                                ...current,
+                                                label: e.target.value
+                                            })
+                                        )
+                                    }
+                                    placeholder="Ex. Test dev"
+                                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#FFB103]/40"
+                                />
+                            </div>
+
+                        </div>
+
+                        <div className="flex justify-end gap-2 mt-5">
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    setEditor(null)
+                                }
+                                className="px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                            >
+                                Annuler
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={saveEditor}
+                                disabled={
+                                    !editor.label.trim()
+                                }
+                                className="px-4 py-2.5 rounded-xl bg-[#FFB103] text-[#1a1a1a] text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-amber-400"
+                            >
+                                Enregistrer
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+            )}
 
         </div>
     );
