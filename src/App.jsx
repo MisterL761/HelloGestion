@@ -485,6 +485,17 @@ function App() {
                     'generateur-courrier'
                 );
 
+            } else if (
+                section ===
+                'generateur-prompts'
+            ) {
+                setActiveModule(
+                    'generateur-prompts'
+                );
+                setActiveSidebar(
+                    'generateur-prompts'
+                );
+
             } else if (section === 'history') {
                 setActiveModule('history');
                 setActiveSidebar('history');
@@ -2028,6 +2039,7 @@ function App() {
                             'generateur-arc',
                             'generateur-descriptifs',
                             'generateur-courrier',
+                            'generateur-prompts',
 
                             'catalogue',
                             'chantiers',
@@ -2104,6 +2116,24 @@ function App() {
                                 displayUser?.role
                             ) && (
                                 <GenerateurCourrier
+                                    user={
+                                        displayUser
+                                    }
+                                />
+                            )}
+
+                        {activeModule ===
+                            'generateur-prompts' &&
+                            [
+                                'admin',
+                                'gerant',
+                                'administration',
+                                'chef_equipe',
+                                'commercial'
+                            ].includes(
+                                displayUser?.role
+                            ) && (
+                                <GenerateurPrompts
                                     user={
                                         displayUser
                                     }
