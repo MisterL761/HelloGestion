@@ -456,12 +456,9 @@ function App() {
             } else if (
                 section === 'generateur-arc'
             ) {
-                setActiveModule(
-                    'generateur-arc'
-                );
-                setActiveSidebar(
-                    'generateur-arc'
-                );
+                // Ouvre Veridoc directement depuis la sidebar.
+                window.location.href = 'https://veridoc.io/auth?redirect=%2Fdashboard';
+                return;
 
             } else if (
                 section ===
