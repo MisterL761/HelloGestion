@@ -564,7 +564,7 @@ const emptyConfig = () => ({
     repere: '',
     checks: {},
     radios: {},
-    motorisation: '',
+    motorisation: [],
     particular: '',
     excluded: ''
 });
@@ -923,13 +923,19 @@ function genererProduit(item) {
 
     // Le type de pose complète directement la phrase principale.
     // Exemple : option « Créneau » -> « Pose de 1 fenêtre en créneau. »
-    if (pose && poseOptions?.length) {
-        const option = poseOptions.find(
-            item => item.id === pose
-        );
+    const poseConfig = radios?.pose ?? pose;
+    const posesSelectionnees = Array.isArray(poseConfig)
+        ? poseConfig
+        : (poseConfig ? [poseConfig] : []);
 
-        if (option?.phraseText) {
-            ligneProduit += ` ${String(option.phraseText).trim()}`;
+    if (posesSelectionnees.length && poseOptions?.length) {
+        const phrasesPose = poseOptions
+            .filter(option => posesSelectionnees.includes(option.id))
+            .map(option => String(option.phraseText || '').trim())
+            .filter(Boolean);
+
+        if (phrasesPose.length) {
+            ligneProduit += ` ${phrasesPose.join(', ')}`;
         }
     }
 
@@ -980,20 +986,15 @@ function genererProduit(item) {
             GROUPES[groupKey]?.type;
 
         if (groupType === 'radio') {
-            const selected =
-                options.find(
-                    option =>
-                        option.id ===
-                        radios?.[groupKey]
-                );
+            const selectedValues = Array.isArray(radios?.[groupKey])
+                ? radios[groupKey]
+                : (radios?.[groupKey] ? [radios[groupKey]] : []);
 
-            if (selected) {
-                parts.push(
-                    ensurePeriod(
-                        selected.phraseText
-                    )
-                );
-            }
+            options
+                .filter(option => selectedValues.includes(option.id))
+                .forEach(option => {
+                    parts.push(ensurePeriod(option.phraseText));
+                });
 
             return;
         }
@@ -1009,9 +1010,13 @@ function genererProduit(item) {
         });
     });
 
-    if (motorisation) {
+    const motorisationsSelectionnees = Array.isArray(motorisation)
+        ? motorisation
+        : (motorisation ? [motorisation] : []);
+
+    if (motorisationsSelectionnees.length) {
         parts.push(
-            `Motorisation : ${motorisation}.`
+            `Motorisation : ${motorisationsSelectionnees.join(', ')}.`
         );
     }
 
@@ -1616,14 +1621,15 @@ const GenerateurDescriptifs = () => {
                 }
             };
 
-            if (
-                config.radios?.pose === id
-            ) {
+            if ((config.radios?.pose || []).includes?.(id) || config.radios?.pose === id) {
                 setConfig(currentConfig => ({
                     ...currentConfig,
                     radios: {
                         ...currentConfig.radios,
-                        pose: ''
+                        pose: (Array.isArray(currentConfig.radios?.pose)
+                            ? currentConfig.radios.pose
+                            : [currentConfig.radios?.pose].filter(Boolean)
+                        ).filter(value => value !== id)
                     }
                 }));
             }
@@ -1696,12 +1702,13 @@ const GenerateurDescriptifs = () => {
                 )
             };
 
-            if (
-                config.motorisation === id
-            ) {
+            if ((Array.isArray(config.motorisation) ? config.motorisation : [config.motorisation]).includes(id)) {
                 setConfig(currentConfig => ({
                     ...currentConfig,
-                    motorisation: ''
+                    motorisation: (Array.isArray(currentConfig.motorisation)
+                        ? currentConfig.motorisation
+                        : [currentConfig.motorisation].filter(Boolean)
+                    ).filter(value => value !== id)
                 }));
             }
         }
@@ -1812,21 +1819,36 @@ const GenerateurDescriptifs = () => {
        RADIO
     ===================================================== */
 
-    const setRadio = (
-        group,
-        value
-    ) => {
+    const setRadio = (group, value) => {
+        updateConfig(current => {
+            const previous = Array.isArray(current.radios?.[group])
+                ? current.radios[group]
+                : (current.radios?.[group] ? [current.radios[group]] : []);
+            const selected = previous.includes(value)
+                ? previous.filter(item => item !== value)
+                : [...previous, value];
 
-        updateConfig(
-            current => ({
+            return {
                 ...current,
-
                 radios: {
                     ...current.radios,
-                    [group]: value
+                    [group]: selected
                 }
-            })
-        );
+            };
+        });
+    };
+
+    const toggleMotorisation = value => {
+        updateConfig(current => {
+            const previous = Array.isArray(current.motorisation)
+                ? current.motorisation
+                : (current.motorisation ? [current.motorisation] : []);
+            const selected = previous.includes(value)
+                ? previous.filter(item => item !== value)
+                : [...previous, value];
+
+            return { ...current, motorisation: selected };
+        });
     };
 
 
@@ -2482,7 +2504,7 @@ const GenerateurDescriptifs = () => {
                                 <h2 className="text-xs font-bold uppercase tracking-wider text-amber-700">
                                     Type de pose
                                     <span className="text-gray-400 font-medium normal-case tracking-normal">
-                                        {' '}— un seul
+                                        {' '}— sélection multiple possible
                                     </span>
                                 </h2>
 
@@ -2505,11 +2527,13 @@ const GenerateurDescriptifs = () => {
                                     option => (
                                         <OptionRow
                                             key={option.id}
-                                            type="radio"
+                                            type="checkbox"
                                             label={option.label}
                                             checked={
-                                                config.radios.pose ===
-                                                option.id
+                                                (Array.isArray(config.radios.pose)
+                                                    ? config.radios.pose
+                                                    : [config.radios.pose].filter(Boolean)
+                                                ).includes(option.id)
                                             }
                                             onChange={() =>
                                                 setRadio(
@@ -2574,7 +2598,7 @@ const GenerateurDescriptifs = () => {
 
                                             {isRadio && (
                                                 <span className="text-gray-400 font-medium normal-case tracking-normal">
-                                                    {' '}— un seul
+                                                    {' '}— sélection multiple possible
                                                 </span>
                                             )}
                                         </h2>
@@ -2610,8 +2634,10 @@ const GenerateurDescriptifs = () => {
                                                     label={option.label}
                                                     checked={
                                                         isRadio
-                                                            ? config.radios[groupKey] ===
-                                                              option.id
+                                                            ? (Array.isArray(config.radios[groupKey])
+                                                                ? config.radios[groupKey]
+                                                                : [config.radios[groupKey]].filter(Boolean)
+                                                              ).includes(option.id)
                                                             : !!config.checks[option.id]
                                                     }
                                                     onChange={() =>
@@ -2678,16 +2704,15 @@ const GenerateurDescriptifs = () => {
 
                             <div className="space-y-1">
                                 <OptionRow
-                                    type="radio"
+                                    type="checkbox"
                                     label="Aucune / manuel"
                                     checked={
-                                        !config.motorisation
+                                        !(Array.isArray(config.motorisation)
+                                            ? config.motorisation.length
+                                            : config.motorisation)
                                     }
                                     onChange={() =>
-                                        setField(
-                                            'motorisation',
-                                            ''
-                                        )
+                                        setField('motorisation', [])
                                     }
                                     onEdit={() => {}}
                                     onDelete={() => {}}
@@ -2698,17 +2723,16 @@ const GenerateurDescriptifs = () => {
                                     option => (
                                         <OptionRow
                                             key={option.id}
-                                            type="radio"
+                                            type="checkbox"
                                             label={option.label}
                                             checked={
-                                                config.motorisation ===
-                                                option.label
+                                                (Array.isArray(config.motorisation)
+                                                    ? config.motorisation
+                                                    : [config.motorisation].filter(Boolean)
+                                                ).includes(option.label)
                                             }
                                             onChange={() =>
-                                                setField(
-                                                    'motorisation',
-                                                    option.label
-                                                )
+                                                toggleMotorisation(option.label)
                                             }
                                             onEdit={() =>
                                                 openEditor({
@@ -2881,12 +2905,13 @@ const GenerateurDescriptifs = () => {
                                         index
                                     ) => {
 
-                                        const pose =
-                                            item.poseOptions?.find(
-                                                option =>
-                                                    option.id ===
-                                                    item.radios.pose
-                                            );
+                                        const poses =
+                                            item.poseOptions?.filter(option =>
+                                                (Array.isArray(item.radios?.pose)
+                                                    ? item.radios.pose
+                                                    : [item.radios?.pose].filter(Boolean)
+                                                ).includes(option.id)
+                                            ) || [];
 
                                         return (
 
@@ -2917,8 +2942,9 @@ const GenerateurDescriptifs = () => {
                                                     <div className="text-xs text-gray-500 mt-1">
 
                                                         {
-                                                            pose?.label ||
-                                                            'Configuration à préciser'
+                                                            poses.length
+                                                                ? poses.map(option => option.label).join(', ')
+                                                                : 'Configuration à préciser'
                                                         }
 
                                                         {item.repere &&
