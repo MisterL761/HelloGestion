@@ -24,6 +24,7 @@ import Logs from './components/Logs';
 import Settings from './components/Settings';
 
 import Annuaire from './components/Annuaire';
+import CommandesFournisseurs from './components/CommandesFournisseurs';
 import Assistant from './components/Assistant';
 import ComparateurDevis from './components/ComparateurDevis';
 
@@ -434,6 +435,10 @@ function App() {
             } else if (section === 'annuaire') {
                 setActiveModule('annuaire');
                 setActiveSidebar('annuaire');
+
+            } else if (section === 'commandes-fournisseurs') {
+                setActiveModule('commandes-fournisseurs');
+                setActiveSidebar('commandes-fournisseurs');
 
             } else if (
                 section === 'boite-fournisseurs'
@@ -1593,6 +1598,7 @@ function App() {
         orders:             'Commandes',
         history:            'Historique Stock',
         annuaire:           'Annuaire Fournisseurs',
+        'commandes-fournisseurs': 'Commandes fournisseurs',
         'boite-fournisseurs': 'Boîte Fournisseurs',
         assistant:          'Assistant IA',
         comparateur:        'Comparateur Devis',
@@ -2031,6 +2037,7 @@ function App() {
 
                         {[
                             'annuaire',
+                            'commandes-fournisseurs',
                             'assistant',
                             'comparateur',
                             'generateur-arc',
@@ -2067,6 +2074,10 @@ function App() {
                                     }
                                 />
                             )}
+
+                        {activeModule === 'commandes-fournisseurs' && (
+                            <CommandesFournisseurs user={displayUser} />
+                        )}
 
                         {activeModule ===
                             'assistant' && (

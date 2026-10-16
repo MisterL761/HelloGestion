@@ -54,6 +54,13 @@ try {
     // Colonne déjà existante, on ignore
 }
 
+// Ajoute la colonne du lien de commande si elle n'existe pas encore
+try {
+    $pdo->exec("ALTER TABLE `annulaire_fournisseurs` ADD COLUMN `order_url` VARCHAR(1000) NOT NULL DEFAULT ''");
+} catch (\PDOException $e) {
+    // Colonne déjà existante, on ignore
+}
+
 // Ajoute la colonne fax si elle n'existe pas encore
 try {
     $pdo->exec("ALTER TABLE `annulaire_numeros` ADD COLUMN `fax` VARCHAR(30) NOT NULL DEFAULT ''");
@@ -74,7 +81,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'GET') {
     $fournisseurs = $pdo->query(
-        'SELECT id, nom, created_at FROM annulaire_fournisseurs ORDER BY nom ASC'
+        'SELECT id, nom, order_url, created_at FROM annulaire_fournisseurs ORDER BY nom ASC'
     )->fetchAll(PDO::FETCH_ASSOC);
 
     $numeros = $pdo->query(
@@ -99,8 +106,9 @@ if ($method === 'GET') {
         $fid = (int) $f['id'];
         $result[] = [
             'id'     => $fid,
-            'name'   => $f['nom'],
-            'phones' => $numerosMap[$fid] ?? [],
+            'name'      => $f['nom'],
+            'order_url' => $f['order_url'] ?? '',
+            'phones'    => $numerosMap[$fid] ?? [],
         ];
     }
 
@@ -169,6 +177,30 @@ if ($method === 'PUT') {
     if ($id <= 0) {
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'ID invalide.']);
+        exit();
+    }
+
+    if ($type === 'supplier_url') {
+        $orderUrl = trim((string) ($body['order_url'] ?? ''));
+        if ($orderUrl !== '') {
+            $parsedUrl = filter_var($orderUrl, FILTER_VALIDATE_URL);
+            $scheme = strtolower((string) parse_url($orderUrl, PHP_URL_SCHEME));
+            if (!$parsedUrl || !in_array($scheme, ['http', 'https'], true)) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Le lien doit être une URL valide commençant par http:// ou https://.']);
+                exit();
+            }
+        }
+        $check = $pdo->prepare('SELECT id FROM annulaire_fournisseurs WHERE id = ?');
+        $check->execute([$id]);
+        if (!$check->fetch()) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'message' => 'Fournisseur introuvable.']);
+            exit();
+        }
+        $stmt = $pdo->prepare('UPDATE annulaire_fournisseurs SET order_url = ? WHERE id = ?');
+        $stmt->execute([$orderUrl, $id]);
+        echo json_encode(['success' => true], JSON_UNESCAPED_UNICODE);
         exit();
     }
 

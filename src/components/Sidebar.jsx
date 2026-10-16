@@ -70,6 +70,7 @@ import {
 
     Bell,
     Trash2,
+    ShoppingCart,
 
 
 } from 'lucide-react';
@@ -1092,7 +1093,7 @@ const Sidebar = ({
 
 
 
-                    <span className="text-sm font-medium">
+                    <span className="text-sm font-medium whitespace-nowrap">
 
                         {label}
 
@@ -2494,6 +2495,14 @@ const Sidebar = ({
 
                             ================================================== */}
 
+
+
+                            <NavItem
+                                icon={ShoppingCart}
+                                label="Commandes fournisseurs"
+                                id="commandes-fournisseurs"
+                                active={activeSidebar === 'commandes-fournisseurs'}
+                            />
 
 
                             {[
