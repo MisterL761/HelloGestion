@@ -449,9 +449,17 @@ const UserList = ({ currentUser, onSelectUser }) => {
                 throw new Error(data.message || "Impossible de modifier l'accès à la Commission");
             }
 
+            // L'API peut répondre { success: true } sans renvoyer commission_access.
+            // On utilise donc la valeur que l'administrateur vient de choisir.
+            const savedAccess = Number(
+                data.commission_access ??
+                data.data?.commission_access ??
+                (enabled ? 1 : 0)
+            );
+
             setUsers(prev => prev.map(u =>
                 String(u.id) === String(user.id)
-                    ? { ...u, commission_access: Number(data.commission_access) }
+                    ? { ...u, commission_access: savedAccess }
                     : u
             ));
 

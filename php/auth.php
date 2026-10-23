@@ -152,7 +152,7 @@ try {
         */
 
         case 'check':
-            checkAuth($logDir);
+            checkAuth($pdo, $logDir);
             break;
 
 
@@ -355,7 +355,8 @@ function handleLogin($pdo, $logDir)
                 password,
                 role,
                 name,
-                position
+                position,
+                COALESCE(commission_access, 0) AS commission_access
              FROM users
              WHERE email = ?
              AND status = 'active'
@@ -438,6 +439,8 @@ function handleLogin($pdo, $logDir)
 
             'position' => $user['position'],
 
+            'commission_access' => (int) ($user['commission_access'] ?? 0),
+
             'force_password_change' => false
         ];
 
@@ -481,6 +484,8 @@ function handleLogin($pdo, $logDir)
             'name' => $user['name'],
 
             'position' => $user['position'],
+
+            'commission_access' => (int) ($user['commission_access'] ?? 0),
 
             'force_password_change' => false
         ];
@@ -574,8 +579,23 @@ function handleLogout($logDir)
 
             $email = $_SESSION['user']['email'] ?? 'unknown';
 
-            $userId = $_SESSION['user']['id'] ?? 'unknown';
+            $userId = (int) ($_SESSION['user']['id'] ?? 0);
 
+            // Relire le droit Commission en base pour ne pas conserver
+            // une ancienne valeur dans la session après une modification admin.
+            if ($userId > 0) {
+                $stmt = $pdo->prepare(
+                    'SELECT COALESCE(commission_access, 0) FROM users WHERE id = ? LIMIT 1'
+                );
+                $stmt->execute([$userId]);
+                $commissionAccess = $stmt->fetchColumn();
+
+                if ($commissionAccess !== false) {
+                    $_SESSION['user']['commission_access'] = (int) $commissionAccess;
+                } else {
+                    $_SESSION['user']['commission_access'] = 0;
+                }
+            }
 
             file_put_contents(
                 $logDir . '/auth_logout.log',
@@ -678,90 +698,76 @@ function handleLogout($logDir)
 |--------------------------------------------------------------------------
 */
 
-function checkAuth($logDir)
+function checkAuth($pdo, $logDir)
 {
     try {
-
-        if (isset($_SESSION['user'])) {
-
-            $email = $_SESSION['user']['email'] ?? 'unknown';
-
-            $userId = $_SESSION['user']['id'] ?? 'unknown';
-
-
-            file_put_contents(
-                $logDir . '/auth_check.log',
-                date('Y-m-d H:i:s') .
-                " - Vérification session valide pour '" .
-                $email .
-                "' (ID: " .
-                $userId .
-                ")" .
-                PHP_EOL,
-                FILE_APPEND
-            );
-
-
-            if (ob_get_level()) {
-                ob_end_clean();
-            }
-
-
-            echo json_encode([
-                'success' => true,
-                'data' => [
-                    'user' => $_SESSION['user']
-                ]
-            ]);
-
-
-        } else {
-
-            file_put_contents(
-                $logDir . '/auth_check.log',
-                date('Y-m-d H:i:s') .
-                " - Vérification session: Non authentifié" .
-                PHP_EOL,
-                FILE_APPEND
-            );
-
-
-            if (ob_get_level()) {
-                ob_end_clean();
-            }
-
-
+        if (!isset($_SESSION['user'])) {
+            if (ob_get_level()) ob_end_clean();
+            http_response_code(401);
             echo json_encode([
                 'success' => false,
                 'message' => 'Non authentifié'
             ]);
+            return;
         }
 
+        $userId = (int) ($_SESSION['user']['id'] ?? 0);
+        if ($userId <= 0) {
+            $_SESSION = [];
+            if (ob_get_level()) ob_end_clean();
+            http_response_code(401);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Session invalide'
+            ]);
+            return;
+        }
 
-    } catch (Exception $e) {
+        // Relire les informations depuis la base à chaque vérification,
+        // notamment commission_access qui peut avoir été modifié par un admin.
+        $stmt = $pdo->prepare("SELECT id, email, role, name, position, COALESCE(commission_access, 0) AS commission_access FROM users WHERE id = ? AND status = 'active' LIMIT 1");
+        $stmt->execute([$userId]);
+        $dbUser = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$dbUser) {
+            $_SESSION = [];
+            if (ob_get_level()) ob_end_clean();
+            http_response_code(401);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Compte inactif ou introuvable'
+            ]);
+            return;
+        }
+
+        $userInfo = [
+            'id' => $dbUser['id'],
+            'email' => $dbUser['email'],
+            'role' => $dbUser['role'],
+            'name' => $dbUser['name'],
+            'position' => $dbUser['position'],
+            'commission_access' => (int) $dbUser['commission_access'],
+            'force_password_change' => (bool) ($_SESSION['user']['force_password_change'] ?? false)
+        ];
+
+        $_SESSION['user'] = array_merge($_SESSION['user'], $userInfo);
+        $_SESSION['LAST_ACTIVITY'] = time();
 
         file_put_contents(
             $logDir . '/auth_check.log',
-            date('Y-m-d H:i:s') .
-            " - Erreur lors de la vérification: " .
-            $e->getMessage() .
-            PHP_EOL,
+            date('Y-m-d H:i:s') . " - Vérification session actualisée pour ID=" . $userId . " commission_access=" . $userInfo['commission_access'] . PHP_EOL,
             FILE_APPEND
         );
 
-
-        if (ob_get_level()) {
-            ob_end_clean();
-        }
-
-
-        error_log(
-            date('Y-m-d H:i:s') .
-            ' - Auth error: ' .
-            $e->getMessage()
-        );
-
-
+        if (ob_get_level()) ob_end_clean();
+        echo json_encode([
+            'success' => true,
+            'data' => ['user' => $userInfo]
+        ], JSON_UNESCAPED_UNICODE);
+    } catch (Throwable $e) {
+        if (ob_get_level()) ob_end_clean();
+        error_log('auth.php checkAuth error: ' . $e->getMessage());
+        http_response_code(500);
         echo json_encode([
             'success' => false,
             'message' => 'Erreur serveur'

@@ -14,11 +14,7 @@ import ExpenseReports from './ExpenseReports';
 
 import CommissionCalculator from './CommissionCalculator';
 
-
-
 const API_BASE = import.meta.env.VITE_API_BASE || '/hello-gestion/php';
-
-
 
 const DOC_CATEGORIES = [
 
@@ -34,8 +30,6 @@ const DOC_CATEGORIES = [
 
 ];
 
-
-
 const SUIVI_CATEGORIES = [
 
     { value: 'note',   label: 'Note',   icon: FileText, color: 'bg-blue-100 text-blue-700' },
@@ -46,11 +40,7 @@ const SUIVI_CATEGORIES = [
 
 ];
 
-
-
 // ── Onglet Documents ───────────────────────────────────────
-
-
 
 const DocumentsTab = ({ user, targetUserId }) => {
 
@@ -78,8 +68,6 @@ const DocumentsTab = ({ user, targetUserId }) => {
 
     const [renameCatValue, setRenameCatValue] = useState('');
 
-
-
     const fetchDocs = async () => {
 
         setLoading(true);
@@ -100,11 +88,7 @@ const DocumentsTab = ({ user, targetUserId }) => {
 
     };
 
-
-
     useEffect(() => { fetchDocs(); }, [targetUserId]);
-
-
 
     const handleUpload = async (e) => {
 
@@ -127,8 +111,6 @@ const DocumentsTab = ({ user, targetUserId }) => {
             fd.append('file', file);
 
             if (targetUserId) fd.append('user_id', targetUserId);
-
-
 
             const res  = await fetch(`${API_BASE}/casier_documents.php`, { method: 'POST', body: fd, credentials: 'include' });
 
@@ -154,8 +136,6 @@ const DocumentsTab = ({ user, targetUserId }) => {
 
     };
 
-
-
     const handleDelete = async (id) => {
 
         if (!await confirm('Supprimer ce document ?')) return;
@@ -173,8 +153,6 @@ const DocumentsTab = ({ user, targetUserId }) => {
         } catch { toast.error('Erreur réseau'); }
 
     };
-
-
 
     const handleRename = async (id) => {
 
@@ -212,19 +190,13 @@ const DocumentsTab = ({ user, targetUserId }) => {
 
     };
 
-
-
     const canUpload = ['admin', 'gerant', 'administration'].includes(user?.role);
 
     const canRename = canUpload || !targetUserId; // le propriétaire peut renommer ses propres documents
 
     const inputCls  = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FFB103]';
 
-
-
     if (loading) return <div className="py-10 text-center text-gray-400 text-sm">Chargement…</div>;
-
-
 
     return (
 
@@ -245,8 +217,6 @@ const DocumentsTab = ({ user, targetUserId }) => {
                 </div>
 
             )}
-
-
 
             {showForm && canUpload && (
 
@@ -336,8 +306,6 @@ const DocumentsTab = ({ user, targetUserId }) => {
 
             )}
 
-
-
             {docs.length === 0 ? (
 
                 <div className="text-center py-12 text-gray-400">
@@ -361,8 +329,6 @@ const DocumentsTab = ({ user, targetUserId }) => {
                                 <FileText size={18} className="text-amber-700" />
 
                             </div>
-
-
 
                             {renamingId === doc.id ? (
 
@@ -434,8 +400,6 @@ const DocumentsTab = ({ user, targetUserId }) => {
 
                             )}
 
-
-
                             <div className="flex items-center gap-1 flex-shrink-0">
 
                                 <a href={`/hello-gestion/php/${doc.file_path}`} target="_blank" rel="noopener noreferrer"
@@ -494,11 +458,7 @@ const DocumentsTab = ({ user, targetUserId }) => {
 
 };
 
-
-
 // ── Onglet Suivi Administratif ─────────────────────────────
-
-
 
 const SuiviTab = ({ user, targetUserId }) => {
 
@@ -516,11 +476,7 @@ const SuiviTab = ({ user, targetUserId }) => {
 
     const [saving, setSaving] = useState(false);
 
-
-
     const canCreate = ['admin', 'gerant', 'administration'].includes(user?.role);
-
-
 
     const fetchEntries = async () => {
 
@@ -542,11 +498,7 @@ const SuiviTab = ({ user, targetUserId }) => {
 
     };
 
-
-
     useEffect(() => { fetchEntries(); }, [targetUserId]);
-
-
 
     const handleCreate = async (e) => {
 
@@ -588,8 +540,6 @@ const SuiviTab = ({ user, targetUserId }) => {
 
     };
 
-
-
     const handleDelete = async (id) => {
 
         if (!await confirm('Supprimer cette entrée ?')) return;
@@ -606,15 +556,9 @@ const SuiviTab = ({ user, targetUserId }) => {
 
     };
 
-
-
     const inputCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FFB103]';
 
-
-
     if (loading) return <div className="py-10 text-center text-gray-400 text-sm">Chargement…</div>;
-
-
 
     return (
 
@@ -635,8 +579,6 @@ const SuiviTab = ({ user, targetUserId }) => {
                 </div>
 
             )}
-
-
 
             {showForm && canCreate && (
 
@@ -699,8 +641,6 @@ const SuiviTab = ({ user, targetUserId }) => {
                 </form>
 
             )}
-
-
 
             {entries.length === 0 ? (
 
@@ -782,11 +722,7 @@ const SuiviTab = ({ user, targetUserId }) => {
 
 };
 
-
-
 // ── Onglet Clients (chef d'équipe) ────────────────────────
-
-
 
 const ClientsTab = ({ user, targetUserId }) => {
 
@@ -804,13 +740,9 @@ const ClientsTab = ({ user, targetUserId }) => {
 
     const [saving, setSaving] = useState(false);
 
-
-
     const canManage = ['admin', 'gerant', 'administration', 'chef_equipe'].includes(user?.role);
 
     const inputCls  = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#FFB103]';
-
-
 
     const fetchClients = async () => {
 
@@ -832,11 +764,7 @@ const ClientsTab = ({ user, targetUserId }) => {
 
     };
 
-
-
     useEffect(() => { fetchClients(); }, [targetUserId]);
-
-
 
     const handleCreate = async (e) => {
 
@@ -888,8 +816,6 @@ const ClientsTab = ({ user, targetUserId }) => {
 
     };
 
-
-
     const handleDelete = async (id) => {
 
         if (!await confirm('Supprimer ce client ?')) return;
@@ -908,11 +834,7 @@ const ClientsTab = ({ user, targetUserId }) => {
 
     };
 
-
-
     if (loading) return <div className="py-10 text-center text-gray-400 text-sm">Chargement…</div>;
-
-
 
     return (
 
@@ -933,8 +855,6 @@ const ClientsTab = ({ user, targetUserId }) => {
                 </div>
 
             )}
-
-
 
             {showForm && canManage && (
 
@@ -985,8 +905,6 @@ const ClientsTab = ({ user, targetUserId }) => {
                 </form>
 
             )}
-
-
 
             {clients.length === 0 ? (
 
@@ -1056,11 +974,7 @@ const ClientsTab = ({ user, targetUserId }) => {
 
 };
 
-
-
 // ── Composant principal Casier ─────────────────────────────
-
-
 
 const TABS_CONFIG = [
 
@@ -1076,39 +990,39 @@ const TABS_CONFIG = [
 
 ];
 
-
-
 // Casier : espace personnel d’un utilisateur.
 
 const Casier = ({ user, targetUserId = null, targetUserRole = null, targetCommissionAccess = null }) => {
 
     const [activeTab, setActiveTab] = useState('documents');
 
-
-
     // Le rôle effectif pour filtrer les onglets : celui de la cible si on consulte un autre casier
 
     const effectiveRole = targetUserRole || user?.role;
 
-    // L'accès à Commission dépend d'une autorisation individuelle, pas du rôle commercial.
-    const hasCommissionAccess = targetUserId
-        ? Number(targetCommissionAccess) === 1
-        : Number(user?.commission_access) === 1;
+    // L'accès à Commission dépend d'une autorisation individuelle, pas du rôle commercial.
 
-    const availableTabs = TABS_CONFIG.filter(t => {
-        if (t.id === 'commission') return hasCommissionAccess;
-        return !t.targetRoles || t.targetRoles.includes(effectiveRole);
-    });
+    const hasCommissionAccess = targetUserId
 
-    // Réinitialiser l'onglet si la cible change
+        ? Number(targetCommissionAccess) === 1
+
+        : Number(user?.commission_access) === 1;
+
+    const availableTabs = TABS_CONFIG.filter(t => {
+
+        if (t.id === 'commission') return hasCommissionAccess;
+
+        return !t.targetRoles || t.targetRoles.includes(effectiveRole);
+
+    });
+
+    // Réinitialiser l'onglet si la cible change
 
     React.useEffect(() => {
 
         setActiveTab('documents');
 
     }, [targetUserId]);
-
-
 
     return (
 
@@ -1137,8 +1051,6 @@ const Casier = ({ user, targetUserId = null, targetUserRole = null, targetCommis
                 </div>
 
             )}
-
-
 
             {/* ── Tabs internes ── */}
 
@@ -1174,8 +1086,6 @@ const Casier = ({ user, targetUserId = null, targetUserRole = null, targetCommis
 
             </div>
 
-
-
             {/* ── Contenu ── */}
 
             {activeTab === 'documents'  && <DocumentsTab        user={user} targetUserId={targetUserId} />}
@@ -1193,7 +1103,5 @@ const Casier = ({ user, targetUserId = null, targetUserRole = null, targetCommis
     );
 
 };
-
-
 
 export default Casier;

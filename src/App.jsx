@@ -313,11 +313,31 @@ function App() {
 
                     if (!data.success) {
                         setSessionExpired(true);
+                    } else if (data.data?.user) {
+                        // Actualise les droits de l'utilisateur sans recharger la page.
+                        // Le contrôle est effectué toutes les 10 secondes.
+                        setUser(prev => {
+                            const refreshedUser = data.data.user;
+
+                            if (!prev) {
+                                return refreshedUser;
+                            }
+
+                            // Conserve les éventuelles données locales plus récentes
+                            // et actualise notamment commission_access depuis le serveur.
+                            return {
+                                ...prev,
+                                ...refreshedUser,
+                                commission_access:
+                                    refreshedUser.commission_access ??
+                                    prev.commission_access
+                            };
+                        });
                     }
                 } catch {
                     // Réseau indisponible
                 }
-            }, 120000);
+            }, 1000);
 
         return () => {
             window.removeEventListener(
@@ -434,6 +454,10 @@ function App() {
             } else if (section === 'annuaire') {
                 setActiveModule('annuaire');
                 setActiveSidebar('annuaire');
+
+            } else if (section === 'commandes-fournisseurs') {
+                setActiveModule('commandes-fournisseurs');
+                setActiveSidebar('commandes-fournisseurs');
 
             } else if (
                 section === 'boite-fournisseurs'
@@ -1593,6 +1617,7 @@ function App() {
         orders:             'Commandes',
         history:            'Historique Stock',
         annuaire:           'Annuaire Fournisseurs',
+        'commandes-fournisseurs': 'Commandes fournisseurs',
         'boite-fournisseurs': 'Boîte Fournisseurs',
         assistant:          'Assistant IA',
         comparateur:        'Comparateur Devis',
@@ -2031,6 +2056,7 @@ function App() {
 
                         {[
                             'annuaire',
+                            'commandes-fournisseurs',
                             'assistant',
                             'comparateur',
                             'generateur-arc',
@@ -2067,6 +2093,10 @@ function App() {
                                     }
                                 />
                             )}
+
+                        {activeModule === 'commandes-fournisseurs' && (
+                            <CommandesFournisseurs user={displayUser} />
+                        )}
 
                         {activeModule ===
                             'assistant' && (
