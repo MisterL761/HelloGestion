@@ -1056,7 +1056,10 @@ const GenerateurDescriptifs = () => {
     const [chantier, setChantier] =
         useState([]);
 
-    const [manualText, setManualText] =
+    const [phraseBlocks, setPhraseBlocks] =
+        useState([]);
+
+    const [draggedPhraseIndex, setDraggedPhraseIndex] =
         useState(null);
 
     const [copied, setCopied] =
@@ -1547,7 +1550,8 @@ const GenerateurDescriptifs = () => {
 
         setCustomisations(next);
         setEditor(null);
-        setManualText(null);
+        setPhraseBlocks([]);
+        setDraggedPhraseIndex(null);
         setCopied(false);
     };
 
@@ -1714,7 +1718,8 @@ const GenerateurDescriptifs = () => {
         }
 
         setCustomisations(next);
-        setManualText(null);
+        setPhraseBlocks([]);
+        setDraggedPhraseIndex(null);
         setCopied(false);
     };
 
@@ -1765,7 +1770,8 @@ const GenerateurDescriptifs = () => {
             emptyConfig()
         );
 
-        setManualText(null);
+        setPhraseBlocks([]);
+        setDraggedPhraseIndex(null);
         setCopied(false);
     };
 
@@ -1781,7 +1787,8 @@ const GenerateurDescriptifs = () => {
                 updater(current)
         );
 
-        setManualText(null);
+        setPhraseBlocks([]);
+        setDraggedPhraseIndex(null);
         setCopied(false);
     };
 
@@ -1920,7 +1927,8 @@ const GenerateurDescriptifs = () => {
             emptyConfig()
         );
 
-        setManualText(null);
+        setPhraseBlocks([]);
+        setDraggedPhraseIndex(null);
         setCopied(false);
     };
 
@@ -1971,7 +1979,8 @@ const GenerateurDescriptifs = () => {
             ]
         );
 
-        setManualText(null);
+        setPhraseBlocks([]);
+        setDraggedPhraseIndex(null);
         setCopied(false);
     };
 
@@ -1990,7 +1999,8 @@ const GenerateurDescriptifs = () => {
                 )
         );
 
-        setManualText(null);
+        setPhraseBlocks([]);
+        setDraggedPhraseIndex(null);
         setCopied(false);
     };
 
@@ -2003,7 +2013,8 @@ const GenerateurDescriptifs = () => {
 
         setChantier([]);
 
-        setManualText(null);
+        setPhraseBlocks([]);
+        setDraggedPhraseIndex(null);
         setCopied(false);
     };
 
@@ -2024,7 +2035,8 @@ const GenerateurDescriptifs = () => {
 
         setChantier([]);
 
-        setManualText(null);
+        setPhraseBlocks([]);
+        setDraggedPhraseIndex(null);
         setCopied(false);
     };
 
@@ -2045,9 +2057,17 @@ const GenerateurDescriptifs = () => {
         );
 
 
-    const text =
-        manualText ??
-        autoText;
+    // Chaque phrase du descriptif devient un bloc déplaçable.
+    // On reconstruit les blocs lorsque le descriptif automatique change.
+    useEffect(() => {
+        const phrases = autoText
+            ? autoText.split(/(?<=[.!?])\s+/).map(phrase => phrase.trim()).filter(Boolean)
+            : [];
+        setPhraseBlocks(phrases);
+        setDraggedPhraseIndex(null);
+    }, [autoText]);
+
+    const text = phraseBlocks.join(' ');
 
 
     /* =====================================================
@@ -3002,20 +3022,101 @@ const GenerateurDescriptifs = () => {
                         </p>
 
 
-                        <textarea
-                            value={
-                                text
-                            }
-                            onChange={
-                                e =>
-                                    setManualText(
-                                        e.target.value
-                                    )
-                            }
-                            placeholder="Ajoutez un ou plusieurs produits au chantier..."
-                            spellCheck
-                            className="w-full min-h-[420px] rounded-xl bg-[#111] text-gray-100 text-sm leading-relaxed p-3.5 resize-y border border-gray-700 focus:outline-none focus:ring-2 focus:ring-[#FFB103] placeholder:text-gray-600"
-                        />
+                        {!phraseBlocks.length ? (
+                            <div className="w-full min-h-[160px] rounded-xl bg-[#111] text-gray-500 text-sm p-4 border border-gray-700 flex items-center justify-center text-center">
+                                Ajoutez un ou plusieurs produits au chantier pour générer les phrases.
+                            </div>
+                        ) : (
+                            <div className="space-y-1.5 max-h-[520px] overflow-y-auto pr-1">
+                                {phraseBlocks.map((phrase, index) => (
+                                    <div
+                                        key={`${index}-${phrase}`}
+                                        draggable
+                                        onDragStart={e => {
+                                            setDraggedPhraseIndex(index);
+                                            e.dataTransfer.effectAllowed = 'move';
+                                            e.dataTransfer.setData('text/plain', String(index));
+                                        }}
+                                        onDragOver={e => {
+                                            e.preventDefault();
+                                            e.dataTransfer.dropEffect = 'move';
+                                        }}
+                                        onDrop={e => {
+                                            e.preventDefault();
+                                            const sourceIndex = draggedPhraseIndex ?? Number(e.dataTransfer.getData('text/plain'));
+                                            if (Number.isNaN(sourceIndex) || sourceIndex === index) return;
+                                            setPhraseBlocks(current => {
+                                                const reordered = [...current];
+                                                const [moved] = reordered.splice(sourceIndex, 1);
+                                                reordered.splice(index, 0, moved);
+                                                return reordered;
+                                            });
+                                            setDraggedPhraseIndex(null);
+                                        }}
+                                        onDragEnd={() => setDraggedPhraseIndex(null)}
+                                        className={`flex items-center gap-2 rounded-lg border px-2 py-1.5 transition-all ${
+                                            draggedPhraseIndex === index
+                                                ? 'opacity-40 border-[#FFB103]'
+                                                : 'border-gray-700 bg-[#111] hover:border-gray-500'
+                                        }`}
+                                    >
+                                        <span className="flex-none w-4 text-center text-[10px] text-gray-500">{index + 1}</span>
+                                        <textarea
+                                            value={phrase}
+                                            ref={el => {
+                                                if (el) {
+                                                    el.style.height = 'auto';
+                                                    el.style.height = `${el.scrollHeight}px`;
+                                                }
+                                            }}
+                                            onChange={e => {
+                                                const textarea = e.target;
+                                                textarea.style.height = 'auto';
+                                                textarea.style.height = `${textarea.scrollHeight}px`;
+                                                setPhraseBlocks(current => current.map((item, i) => i === index ? textarea.value : item));
+                                            }}
+                                            rows={1}
+                                            spellCheck
+                                            className="flex-1 min-w-0 overflow-hidden bg-transparent text-gray-100 text-sm leading-snug resize-none focus:outline-none placeholder:text-gray-600 py-0.5"
+                                            aria-label={`Phrase ${index + 1}`}
+                                        />
+                                        <div className="flex-none flex flex-row items-center gap-1 pl-1">
+                                            <span className="text-lg leading-none text-[#FFB103] cursor-grab active:cursor-grabbing select-none" title="Maintenir et déplacer">⠿</span>
+                                            <button
+                                                type="button"
+                                                disabled={index === 0}
+                                                onClick={() => setPhraseBlocks(current => {
+                                                    if (index <= 0) return current;
+                                                    const reordered = [...current];
+                                                    [reordered[index - 1], reordered[index]] = [reordered[index], reordered[index - 1]];
+                                                    return reordered;
+                                                })}
+                                                className="flex h-6 w-6 items-center justify-center rounded border border-[#FFB103]/60 bg-[#FFB103]/20 text-[#FFB103] text-sm font-bold hover:bg-[#FFB103]/40 hover:border-[#FFB103] disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+                                                title="Déplacer la phrase vers le haut"
+                                                aria-label={`Déplacer la phrase ${index + 1} vers le haut`}
+                                            >↑</button>
+                                            <button
+                                                type="button"
+                                                disabled={index === phraseBlocks.length - 1}
+                                                onClick={() => setPhraseBlocks(current => {
+                                                    if (index >= current.length - 1) return current;
+                                                    const reordered = [...current];
+                                                    [reordered[index], reordered[index + 1]] = [reordered[index + 1], reordered[index]];
+                                                    return reordered;
+                                                })}
+                                                className="flex h-6 w-6 items-center justify-center rounded border border-[#FFB103]/60 bg-[#FFB103]/20 text-[#FFB103] text-sm font-bold hover:bg-[#FFB103]/40 hover:border-[#FFB103] disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+                                                title="Déplacer la phrase vers le bas"
+                                                aria-label={`Déplacer la phrase ${index + 1} vers le bas`}
+                                            >↓</button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <p className="text-[11px] text-gray-500 mt-2">
+                            Déplacez les phrases avec l’icône ⠿ ou utilisez les flèches ↑ et ↓. Vous pouvez aussi modifier le texte de chaque bloc.
+                        </p>
 
 
                         <div className="flex gap-2 mt-3">
