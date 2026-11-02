@@ -71,6 +71,7 @@ import {
     Bell,
     Trash2,
     ShoppingCart,
+    Percent,
 
 
 } from 'lucide-react';
@@ -2597,6 +2598,15 @@ const Sidebar = ({
 
 
 
+                            <NavItem
+                                icon={Percent}
+                                label="Remises fournisseurs"
+                                id="remises-fournisseurs"
+                                active={
+                                    activeSidebar ===
+                                    'remises-fournisseurs'
+                                }
+                            />
 
 
                             {[

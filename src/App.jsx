@@ -43,6 +43,7 @@ import SitesFacturation from './components/SitesFacturation';
 import Fournisseurs from './components/Fournisseurs';
 import FournisseurDetail from './components/FournisseurDetail';
 import FournisseursConfig from './components/FournisseursConfig';
+import RemisesFournisseurs from './components/RemisesFournisseurs';
 
 import AddProductModal from './components/AddProductModal';
 import AddDefectiveProductModal from './components/AddDefectiveProductModal';
@@ -451,6 +452,10 @@ function App() {
             } else if (section === 'logs') {
                 setActiveModule('logs');
                 setActiveSidebar('logs');
+
+            } else if (section === 'remises-fournisseurs') {
+                setActiveModule('remises-fournisseurs');
+                setActiveSidebar('remises-fournisseurs');
 
             } else if (section === 'annuaire') {
                 setActiveModule('annuaire');
@@ -1618,6 +1623,7 @@ function App() {
         orders:             'Commandes',
         history:            'Historique Stock',
         annuaire:           'Annuaire Fournisseurs',
+        'remises-fournisseurs': 'Remises fournisseurs',
         'commandes-fournisseurs': 'Commandes fournisseurs',
         'boite-fournisseurs': 'Boîte Fournisseurs',
         assistant:          'Assistant IA',
@@ -2057,6 +2063,7 @@ function App() {
 
                         {[
                             'annuaire',
+                            'remises-fournisseurs',
                             'commandes-fournisseurs',
                             'assistant',
                             'comparateur',
@@ -2085,6 +2092,10 @@ function App() {
                                     }
                                 />
                             )}
+
+                        {activeModule === 'remises-fournisseurs' && (
+                            <RemisesFournisseurs />
+                        )}
 
                         {activeModule ===
                             'annuaire' && (
