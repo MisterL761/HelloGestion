@@ -1073,7 +1073,7 @@ const Sidebar = ({
 
                 <Icon
 
-                    size={20}
+                    size={24}
 
                     className={
 
