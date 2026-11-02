@@ -24,6 +24,7 @@ import Logs from './components/Logs';
 import Settings from './components/Settings';
 
 import Annuaire from './components/Annuaire';
+import CommandesFournisseurs from './components/CommandesFournisseurs';
 import Assistant from './components/Assistant';
 import ComparateurDevis from './components/ComparateurDevis';
 
