@@ -3,7 +3,7 @@ import { Info, X, Pencil, Trash2, Package, Calendar, User, FileText } from 'luci
 import PhotoViewer from './PhotoViewer';
 import { getFileUrl } from '../utils/utilities';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/hello-gestion/php';
+const API_BASE = import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'php';
 
 const DefectiveCard = ({ item, onEditDefectiveProduct, onDeleteDefective, isManager }) => {
     const [showDetail, setShowDetail]           = useState(false);

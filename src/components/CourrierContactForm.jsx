@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, Loader2, Save } from 'lucide-react';
 import { TYPES_CONTACT } from '../utils/courrierConstants';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/hello-gestion/php';
+const API_BASE = import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'php';
 
 const VIDE = {
     civilite: '', nom: '', prenom: '', societe: '', adresse: '',

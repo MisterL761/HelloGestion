@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, ExternalLink, Pencil, Trash2, X, Globe, User, FileText, CreditCard, Copy, Check } from 'lucide-react';
 import { useToast, useConfirm } from './ToastProvider';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/hello-gestion/php';
+const API_BASE = import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'php';
 
 const EMPTY_FORM = { nom: '', url: '', identifiant: '', notes: '' };
 

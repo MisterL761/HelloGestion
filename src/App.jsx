@@ -85,7 +85,7 @@ import {
 
 const API_BASE =
     import.meta.env.VITE_API_BASE ||
-    '/hello-gestion/php';
+    import.meta.env.BASE_URL + 'php';
 
 // Rôles autorisés à voir le Dashboard
 const DASHBOARD_ROLES = [

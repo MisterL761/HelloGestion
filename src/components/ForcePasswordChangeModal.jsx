@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { KeyRound, Eye, EyeOff, ShieldAlert } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/hello-gestion/php';
+const API_BASE = import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'php';
 
 // Défini EN DEHORS pour éviter le remontage à chaque frappe
 const PwdInput = ({ id, label, value, onChange, visible, onToggle }) => (

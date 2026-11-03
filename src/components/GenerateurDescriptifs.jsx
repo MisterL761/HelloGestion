@@ -1136,7 +1136,7 @@ const GenerateurDescriptifs = () => {
     }, []);
 
     const PERMISSIONS_API =
-        '/hello-gestion/php/generator_permissions.php';
+        import.meta.env.BASE_URL + 'php/generator_permissions.php';
 
     const loadMyGeneratorPermissions = useCallback(async () => {
         try {

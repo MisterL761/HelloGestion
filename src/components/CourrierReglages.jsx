@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Save, Upload, Loader2, Check } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/hello-gestion/php';
+const API_BASE = import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'php';
 
 const CHAMPS = [
     { key: 'nom',              label: "Nom de l'entreprise",  placeholder: 'Hello Fermetures' },

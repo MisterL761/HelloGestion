@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { useToast } from './ToastProvider';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/hello-gestion/php';
+const API_BASE = import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'php';
 
 const STATUSES = [
     { value: 'a_traiter',  label: 'À traiter',  dot: 'bg-amber-400',  badge: 'bg-amber-50  text-amber-700  border-amber-200'  },

@@ -44,22 +44,28 @@ export const getFileUrl = (path, apiBase) => {
     // URL absolue HTTP/HTTPS → utiliser telle quelle
     if (path.startsWith('http://') || path.startsWith('https://')) return path;
 
-    // Chemin absolu déjà correct, mais vérifier double chemin corrompu
+    // Base du site (/hello-gestion/ en prod, / sur le site dev) : les chemins
+    // enregistrés en BDD avec /hello-gestion/ sont ramenés à cette base.
+    const base = import.meta.env.BASE_URL;
+
+    // Chemin absolu de prod, en corrigeant un éventuel double chemin corrompu
     if (path.startsWith('/hello-gestion/')) {
-        return path.replace(/\/hello-gestion\/php\/hello-stock\/php\//g, '/hello-gestion/php/');
+        return base + path
+            .slice('/hello-gestion/'.length)
+            .replace(/^php\/hello-stock\/php\//, 'php/');
     }
 
-    // Ancien préfixe /hello-stock/ → /hello-gestion/
-    if (path.startsWith('/hello-stock/')) return path.replace('/hello-stock/', '/hello-gestion/');
+    // Ancien préfixe /hello-stock/ → base du site
+    if (path.startsWith('/hello-stock/')) return base + path.slice('/hello-stock/'.length);
 
-    // Ancien format sans slash (ex: stock/php/uploads/... ou hello-stock/php/uploads/...) → /hello-gestion/php/uploads/...
-    if (path.startsWith('stock/')) return '/hello-gestion/' + path.slice('stock/'.length);
-    if (path.startsWith('hello-stock/php/')) return '/hello-gestion/' + path.slice('hello-stock/php/'.length);
+    // Ancien format sans slash (ex: stock/php/uploads/... ou hello-stock/php/uploads/...) → base du site
+    if (path.startsWith('stock/')) return base + path.slice('stock/'.length);
+    if (path.startsWith('hello-stock/php/')) return base + path.slice('hello-stock/php/'.length);
 
     // Chemin relatif (ex: uploads/img.jpg) → combiner avec la base API
     const cleanBase = apiBase
         ? apiBase.replace(/^https?:\/\/[^/]+/, '').replace(/\/$/, '')
-        : '/hello-gestion/php';
+        : base + 'php';
     const cleanPath = path.replace(/^\//, '');
     return `${cleanBase}/${cleanPath}`;
 };

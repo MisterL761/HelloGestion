@@ -4,7 +4,7 @@ import CourrierPreview from './CourrierPreview';
 import CourrierContactForm from './CourrierContactForm';
 import { TYPES_COURRIER, TONS, contactDisplayName } from '../utils/courrierConstants';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/hello-gestion/php';
+const API_BASE = import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'php';
 const SR = typeof window !== 'undefined' ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null;
 
 const input = 'w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-[#FFB103]';

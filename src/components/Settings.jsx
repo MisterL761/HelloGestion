@@ -9,7 +9,7 @@ import {
 import { useToast } from './ToastProvider';
 import { useNotifications } from '../hooks/useNotifications';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/hello-gestion/php';
+const API_BASE = import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'php';
 
 const ROLE_LABELS = {
     admin:          'Administrateur',
@@ -210,7 +210,7 @@ const Settings = ({ isOpen, onClose, user, onUserUpdate, viewAsRole, onViewAsRol
     // Init quand le modal s'ouvre
     useEffect(() => {
         if (!isOpen) return;
-        setAvatarPreview(user?.avatar_path ? `/hello-gestion/php/${user.avatar_path}` : null);
+        setAvatarPreview(user?.avatar_path ? `${import.meta.env.BASE_URL}php/${user.avatar_path}` : null);
         setAvatarFile(null);
         setProfileForm({ name: user?.name || '', position: user?.position || '' });
         setProfileDirty(false);
@@ -815,7 +815,7 @@ const Settings = ({ isOpen, onClose, user, onUserUpdate, viewAsRole, onViewAsRol
                                         {users.map(u => (
                                             <div key={u.id} className="flex items-center gap-3 py-2 px-2 rounded-xl hover:bg-gray-50 transition-colors">
                                                 {u.avatar_path
-                                                    ? <img src={`/hello-gestion/php/${u.avatar_path}`} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
+                                                    ? <img src={`${import.meta.env.BASE_URL}php/${u.avatar_path}`} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
                                                     : <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0"><UserCircle size={16} className="text-amber-500" /></div>
                                                 }
                                                 <div className="flex-1 min-w-0">

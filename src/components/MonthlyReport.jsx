@@ -1,7 +1,7 @@
 import React, { useState, forwardRef, useImperativeHandle } from 'react';
 import { FileText, Download, Calendar } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/hello-gestion/php';
+const API_BASE = import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'php';
 
 const MonthlyReport = forwardRef(({ inventoryItems = [], onReportSaved }, ref) => {
     const [loading, setLoading] = useState(false);

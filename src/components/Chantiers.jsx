@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useToast, useConfirm } from './ToastProvider';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/hello-gestion/php';
+const API_BASE = import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'php';
 
 /* ─── Formatters ─────────────────────────────────────────────────────────── */
 const fEuro = (n) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n || 0);

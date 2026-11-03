@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Upload, FileText, Image as ImageIcon, Trash2 } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/hello-gestion/php';
+const API_BASE = import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'php';
 
 const EditArticleModal = ({ isOpen, onClose, article, onSave }) => {
     const [formData, setFormData] = useState({

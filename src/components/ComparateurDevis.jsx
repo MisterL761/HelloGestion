@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Upload, X, FileText, CheckCircle, AlertTriangle, AlertCircle, ChevronDown, ChevronUp, RotateCcw, Loader2 } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/hello-gestion/php';
+const API_BASE = import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'php';
 
 const ZONES = [
   { key: 'devis', label: 'Devis', fieldName: 'devis' },

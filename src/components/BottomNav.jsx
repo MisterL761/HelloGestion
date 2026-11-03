@@ -7,7 +7,7 @@ const RESOURCES_MODULES = ['annuaire', 'assistant', 'comparateur', 'generateur-a
 const BottomNav = ({ activeModule, onNavigate, user }) => {
     const role = user?.role ?? '';
     const canSeeDossiers = DOSSIERS_ROLES.includes(role);
-    const avatarUrl = user?.avatar_path ? `/hello-gestion/php/${user.avatar_path}` : null;
+    const avatarUrl = user?.avatar_path ? `${import.meta.env.BASE_URL}php/${user.avatar_path}` : null;
     const isSettings  = activeModule === 'settings';
     const isResources  = RESOURCES_MODULES.includes(activeModule);
 

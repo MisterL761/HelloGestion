@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Lock, User, AlertCircle, Eye, EyeOff, Mail, CheckCircle, ArrowLeft, RefreshCw } from 'lucide-react';
 import { API_BASE } from '../utils/constants';
 
-const API_RESET = import.meta.env.VITE_API_BASE || '/hello-gestion/php';
+const API_RESET = import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'php';
 
 const Login = ({ onLoginSuccess }) => {
     const [view, setView]           = useState('login'); // 'login' | 'forgot' | 'forgot_sent'

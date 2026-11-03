@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, User, Phone, Mail, MapPin, Building2, FileText, UserCheck, Share2, MessageSquare, Plus, Paperclip, FileImage, Trash2, Loader2 } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/hello-gestion/php';
+const API_BASE = import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'php';
 
 const AddAffaireModal = ({ isOpen, onClose, onAdd }) => {
     const [form, setForm] = useState({

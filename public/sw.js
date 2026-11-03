@@ -39,7 +39,7 @@ self.addEventListener('notificationclick', (e) => {
     e.waitUntil(
         self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((wins) => {
             for (const win of wins) {
-                if (win.url.includes('/hello-gestion') && 'focus' in win) {
+                if (win.url.startsWith(self.registration.scope) && 'focus' in win) {
                     win.navigate(url);
                     return win.focus();
                 }

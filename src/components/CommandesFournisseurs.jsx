@@ -13,29 +13,29 @@ import {
     AlertTriangle,
 } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/hello-gestion/php';
+const API_BASE = import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'php';
 
 /**
  * Logos présents dans public/logos/
  */
 const SUPPLIER_LOGOS = {
-    Proferm: '/hello-gestion/logos/proferm.webp',
-    Cetal: '/hello-gestion/logos/logo-cetal.webp',
-    Somfy: '/hello-gestion/logos/somfy.png',
-    Euradif: '/hello-gestion/logos/euradif.svg',
-    SDA: '/hello-gestion/logos/sda.png',
-    Hormann: '/hello-gestion/logos/hormann.jpg',
-    'Hörmann': '/hello-gestion/logos/hormann.jpg',
-    Filtersun: '/hello-gestion/logos/filtersun.png',
-    Volpro: '/hello-gestion/logos/volpro.svg',
-    Voltech: '/hello-gestion/logos/voltech.png',
-    Marquise: '/hello-gestion/logos/expert-marquise-logo.webp',
-    Marquises: '/hello-gestion/logos/expert-marquise-logo.webp',
-    'Serge Ferrari': '/hello-gestion/logos/serge-ferrari.webp',
-    Lahfer: '/hello-gestion/logos/lahfer-logo.jpg',
-    'Moos Logia': '/hello-gestion/logos/moos-logo.jpg',
-    'Volots Thiebaut': '/hello-gestion/logos/volots-thiebaut-logo.jpg',
-    'Volots-Thiebaut': '/hello-gestion/logos/volots-thiebaut-logo.jpg',
+    Proferm: import.meta.env.BASE_URL + 'logos/proferm.webp',
+    Cetal: import.meta.env.BASE_URL + 'logos/logo-cetal.webp',
+    Somfy: import.meta.env.BASE_URL + 'logos/somfy.png',
+    Euradif: import.meta.env.BASE_URL + 'logos/euradif.svg',
+    SDA: import.meta.env.BASE_URL + 'logos/sda.png',
+    Hormann: import.meta.env.BASE_URL + 'logos/hormann.jpg',
+    'Hörmann': import.meta.env.BASE_URL + 'logos/hormann.jpg',
+    Filtersun: import.meta.env.BASE_URL + 'logos/filtersun.png',
+    Volpro: import.meta.env.BASE_URL + 'logos/volpro.svg',
+    Voltech: import.meta.env.BASE_URL + 'logos/voltech.png',
+    Marquise: import.meta.env.BASE_URL + 'logos/expert-marquise-logo.webp',
+    Marquises: import.meta.env.BASE_URL + 'logos/expert-marquise-logo.webp',
+    'Serge Ferrari': import.meta.env.BASE_URL + 'logos/serge-ferrari.webp',
+    Lahfer: import.meta.env.BASE_URL + 'logos/lahfer-logo.jpg',
+    'Moos Logia': import.meta.env.BASE_URL + 'logos/moos-logo.jpg',
+    'Volots Thiebaut': import.meta.env.BASE_URL + 'logos/volots-thiebaut-logo.jpg',
+    'Volots-Thiebaut': import.meta.env.BASE_URL + 'logos/volots-thiebaut-logo.jpg',
 };
 
 const getOrderUrl = supplier =>

@@ -14,7 +14,7 @@ import ExpenseReports from './ExpenseReports';
 
 import CommissionCalculator from './CommissionCalculator';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/hello-gestion/php';
+const API_BASE = import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'php';
 
 const DOC_CATEGORIES = [
 
@@ -402,7 +402,7 @@ const DocumentsTab = ({ user, targetUserId }) => {
 
                             <div className="flex items-center gap-1 flex-shrink-0">
 
-                                <a href={`/hello-gestion/php/${doc.file_path}`} target="_blank" rel="noopener noreferrer"
+                                <a href={`${import.meta.env.BASE_URL}php/${doc.file_path}`} target="_blank" rel="noopener noreferrer"
 
                                     className="p-1.5 text-amber-700 hover:bg-amber-50 rounded-lg" title="Ouvrir">
 
@@ -410,7 +410,7 @@ const DocumentsTab = ({ user, targetUserId }) => {
 
                                 </a>
 
-                                <a href={`/hello-gestion/php/${doc.file_path}`} download={doc.title || doc.name || true}
+                                <a href={`${import.meta.env.BASE_URL}php/${doc.file_path}`} download={doc.title || doc.name || true}
 
                                     className="p-1.5 text-gray-500 hover:bg-gray-50 rounded-lg" title="Télécharger">
 

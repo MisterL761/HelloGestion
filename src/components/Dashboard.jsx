@@ -48,7 +48,7 @@ const STATUS_CFG = {
     rejetee:    { label: 'Rejetée',    color: 'bg-red-100 text-red-800' },
 };
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/hello-gestion/php';
+const API_BASE = import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'php';
 
 // ── Hook fetch générique ───────────────────────────────────
 
@@ -572,7 +572,7 @@ const Dashboard = ({ inventoryItems = [], user, onViewUserCommission, onNavigate
                             {commerciaux.map(u => (
                                 <div key={u.id} className="flex items-center gap-4 px-5 py-3">
                                     {u.avatar_path ? (
-                                        <img src={`/hello-gestion/php/${u.avatar_path}`} alt="avatar"
+                                        <img src={`${import.meta.env.BASE_URL}php/${u.avatar_path}`} alt="avatar"
                                             className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
                                     ) : (
                                         <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">

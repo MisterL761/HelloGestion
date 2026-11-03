@@ -4,7 +4,7 @@ import CourrierEditor from './CourrierEditor';
 import CourrierContacts from './CourrierContacts';
 import CourrierReglages from './CourrierReglages';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/hello-gestion/php';
+const API_BASE = import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'php';
 
 const ROLES_COURRIER = ['admin', 'gerant', 'administration', 'chef_equipe', 'commercial'];
 const ROLES_REGLAGES = ['admin', 'gerant'];

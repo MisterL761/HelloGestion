@@ -4,7 +4,7 @@ import {
     ChevronDown, ChevronRight, Eye, X, AlertCircle
 } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/hello-gestion/php';
+const API_BASE = import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'php';
 
 const CATEGORIES = [
     'Fenêtres', 'Portes', 'Volets roulants', 'Volets battants',

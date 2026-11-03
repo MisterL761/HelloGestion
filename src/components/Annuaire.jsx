@@ -5,7 +5,7 @@ import {
     Search, Pencil, Check, X, Book, Mail, Printer
 } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/hello-gestion/php';
+const API_BASE = import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'php';
 
 const Annuaire = ({ user }) => {
     const isAdmin = user?.role === 'admin';

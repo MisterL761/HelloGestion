@@ -99,14 +99,14 @@ const AddArticleModal = ({ isOpen, onClose, onAdd }) => {
                             <label className="block text-sm font-medium text-gray-700 mb-1">Fournisseur *</label>
                             <div className="grid grid-cols-3 gap-2">
                                 {[
-                                    { value: 'Wurth', logo: '/hello-gestion/logos/wurth.webp' },
-                                    { value: 'Reca', logo: '/hello-gestion/logos/reca.jpeg' },
-                                    { value: 'yess', logo: '/hello-gestion/logos/yess.png' },
-                                    { value: 'trenois', logo: '/hello-gestion/logos/trenois.jpg' },
-                                    { value: 'pointp', logo: '/hello-gestion/logos/pointp.png' },
-                                    { value: 'boschat', logo: '/hello-gestion/logos/boschat.jpeg' },
-                                    { value: 'berner', logo: '/hello-gestion/logos/berner.jpg' },
-                                    { value: 'somfy', logo: '/hello-gestion/logos/somfy.png' }
+                                    { value: 'Wurth', logo: import.meta.env.BASE_URL + 'logos/wurth.webp' },
+                                    { value: 'Reca', logo: import.meta.env.BASE_URL + 'logos/reca.jpeg' },
+                                    { value: 'yess', logo: import.meta.env.BASE_URL + 'logos/yess.png' },
+                                    { value: 'trenois', logo: import.meta.env.BASE_URL + 'logos/trenois.jpg' },
+                                    { value: 'pointp', logo: import.meta.env.BASE_URL + 'logos/pointp.png' },
+                                    { value: 'boschat', logo: import.meta.env.BASE_URL + 'logos/boschat.jpeg' },
+                                    { value: 'berner', logo: import.meta.env.BASE_URL + 'logos/berner.jpg' },
+                                    { value: 'somfy', logo: import.meta.env.BASE_URL + 'logos/somfy.png' }
                                 ].map((supplier) => (
                                     <button
                                         key={supplier.value}

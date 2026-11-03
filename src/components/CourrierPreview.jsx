@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Copy, Check, Printer, Save, Loader2 } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/hello-gestion/php';
+const API_BASE = import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'php';
 
 const MENTIONS = {
     recommande:    'LETTRE RECOMMANDÉE',

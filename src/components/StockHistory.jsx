@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Skeleton from './Skeleton';
 import { History, TrendingDown, TrendingUp, RefreshCw } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/hello-gestion/php';
+const API_BASE = import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'php';
 
 const StockHistory = () => {
     const [movements, setMovements] = useState([]);

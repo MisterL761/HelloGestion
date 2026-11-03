@@ -18,7 +18,7 @@ import Casier from './Casier';
 
 
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/hello-gestion/php';
+const API_BASE = import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'php';
 
 
 
@@ -624,7 +624,7 @@ const UserList = ({ currentUser, onSelectUser }) => {
 
                                     {u.avatar_path ? (
 
-                                        <img src={`/hello-gestion/php/${u.avatar_path}`} alt="avatar"
+                                        <img src={`${import.meta.env.BASE_URL}php/${u.avatar_path}`} alt="avatar"
 
                                             className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
 
@@ -817,7 +817,7 @@ const AdminDossiers = ({ currentUser, initialUser = null }) => {
 
                     {selectedUser.avatar_path ? (
 
-                        <img src={`/hello-gestion/php/${selectedUser.avatar_path}`} alt="avatar"
+                        <img src={`${import.meta.env.BASE_URL}php/${selectedUser.avatar_path}`} alt="avatar"
 
                             className="w-12 h-12 rounded-full object-cover" />
 

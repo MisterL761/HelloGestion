@@ -3,7 +3,7 @@ import { Info, X, Trash2, Package, Calendar, User, Clock } from 'lucide-react';
 import PhotoViewer from './PhotoViewer';
 import { getFileUrl } from '../utils/utilities';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/hello-gestion/php';
+const API_BASE = import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'php';
 
 const formatDateTime = (dateString) => {
     if (!dateString) return '—';

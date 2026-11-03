@@ -3,7 +3,7 @@ import Skeleton from './Skeleton';
 import { Terminal, RefreshCw, AlertTriangle, CheckCircle, XCircle, Info, Filter, Search } from 'lucide-react';
 import { useToast } from './ToastProvider';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/hello-gestion/php';
+const API_BASE = import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'php';
 
 const LEVEL_CONFIG = {
     SUCCESS: { icon: CheckCircle,    color: 'text-green-600',  bg: 'bg-green-50',  badge: 'bg-green-100 text-green-700' },

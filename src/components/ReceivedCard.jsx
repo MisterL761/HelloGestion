@@ -19,7 +19,7 @@ import StatusBadge from './StatusBadge';
 import { getFileUrl } from '../utils/utilities';
 
 const API_BASE =
-    import.meta.env.VITE_API_BASE || '/hello-gestion/php';
+    import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'php';
 
 const isNewItem = (item) => {
     const ref = item.date;

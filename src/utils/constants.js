@@ -1,5 +1,5 @@
 // Configuration API
-export const API_BASE = import.meta.env.VITE_API_BASE || '/hello-gestion/php';
+export const API_BASE = import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'php';
 
 // Fournisseurs disponibles
 export const SUPPLIERS = [

@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useToast, useConfirm } from './ToastProvider';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/hello-gestion/php';
+const API_BASE = import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'php';
 
 const CATEGORIES = [
     { value: 'transport',    label: 'Transport' },
@@ -303,12 +303,12 @@ const ExpenseReports = ({ user, targetUserId = null }) => {
                                     )}
                                     {exp.receipt_path && (
                                         /\.(jpg|jpeg|png|gif|webp)$/i.test(exp.receipt_path) ? (
-                                            <a href={`/hello-gestion/php/${exp.receipt_path}`} target="_blank" rel="noopener noreferrer">
-                                                <img src={`/hello-gestion/php/${exp.receipt_path}`} alt="Justificatif"
+                                            <a href={`${import.meta.env.BASE_URL}php/${exp.receipt_path}`} target="_blank" rel="noopener noreferrer">
+                                                <img src={`${import.meta.env.BASE_URL}php/${exp.receipt_path}`} alt="Justificatif"
                                                     className="w-full max-h-48 object-contain rounded-lg border border-gray-200 bg-gray-50 mt-1" />
                                             </a>
                                         ) : (
-                                            <a href={`/hello-gestion/php/${exp.receipt_path}`} target="_blank" rel="noopener noreferrer"
+                                            <a href={`${import.meta.env.BASE_URL}php/${exp.receipt_path}`} target="_blank" rel="noopener noreferrer"
                                                 className="inline-flex items-center gap-2 text-sm text-amber-700 hover:text-amber-800 font-medium">
                                                 <Eye size={14} /> Voir le justificatif
                                             </a>

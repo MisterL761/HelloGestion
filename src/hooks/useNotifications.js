@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-const API_BASE  = import.meta.env.VITE_API_BASE || '/hello-gestion/php';
+const API_BASE  = import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'php';
 const VAPID_KEY = 'BPj3AceJqjOJIS9cwtbWUQnQShL7T9yXg4XIIT9z3l_ZBT-LfXg1LetkJn-ecY95OkipK6bXQgVVHQhedz7xivM';
 
 // Toutes les vérifications dans des try/catch pour éviter tout crash mobile
@@ -55,7 +55,7 @@ export function useNotifications() {
             if (perm !== 'granted') return;
 
             const reg = await navigator.serviceWorker.register(
-                '/hello-gestion/sw.js', { scope: '/hello-gestion/' }
+                import.meta.env.BASE_URL + 'sw.js', { scope: import.meta.env.BASE_URL }
             );
             await navigator.serviceWorker.ready;
 
@@ -87,7 +87,7 @@ export function useNotifications() {
         if (!supported || loading) return;
         setLoading(true);
         try {
-            const reg = await navigator.serviceWorker.getRegistration('/hello-gestion/');
+            const reg = await navigator.serviceWorker.getRegistration(import.meta.env.BASE_URL);
             if (reg) {
                 const sub = await reg.pushManager.getSubscription();
                 if (sub) {

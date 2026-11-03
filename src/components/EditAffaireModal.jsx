@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, User, Phone, Mail, MapPin, Building2, FileText, UserCheck, Share2, MessageSquare, Plus, Paperclip, FileImage, Trash2, Euro, Loader2, CheckCircle2 } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/hello-gestion/php';
+const API_BASE = import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'php';
 
 const STATUSES = [
     { value: 'a_traiter', label: 'À traiter',  color: 'bg-amber-50  text-amber-700  border-amber-200'  },

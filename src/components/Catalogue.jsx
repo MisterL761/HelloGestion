@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { BookMarked, FileText, Trash2, Eye, Download, Pencil, Check, X, Upload, Store, Briefcase } from 'lucide-react';
 import { useToast, useConfirm } from './ToastProvider';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/hello-gestion/php';
+const API_BASE = import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'php';
 
 const CATEGORIES = [
     { value: 'magasin', label: 'Catalogue Magasin', icon: Store,     color: 'bg-blue-100 text-blue-700',   dot: 'bg-blue-500' },
@@ -271,11 +271,11 @@ const Catalogue = ({ user }) => {
                                     {/* Actions */}
                                     {renamingId !== doc.id && (
                                         <div className="flex items-center gap-1 flex-shrink-0">
-                                            <a href={`/hello-gestion/php/${doc.file_path}`} target="_blank" rel="noopener noreferrer"
+                                            <a href={`${import.meta.env.BASE_URL}php/${doc.file_path}`} target="_blank" rel="noopener noreferrer"
                                                 className="p-1.5 text-amber-700 hover:bg-amber-50 rounded-lg" title="Ouvrir">
                                                 <Eye size={16} />
                                             </a>
-                                            <a href={`/hello-gestion/php/${doc.file_path}`} download={doc.name || true}
+                                            <a href={`${import.meta.env.BASE_URL}php/${doc.file_path}`} download={doc.name || true}
                                                 className="p-1.5 text-gray-500 hover:bg-gray-50 rounded-lg" title="Télécharger">
                                                 <Download size={16} />
                                             </a>

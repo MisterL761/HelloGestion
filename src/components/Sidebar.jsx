@@ -266,7 +266,7 @@ const Sidebar = ({
 
             const response = await fetch(
 
-                '/hello-gestion/php/user_notifications.php?action=list&_=' + Date.now(),
+                import.meta.env.BASE_URL + 'php/user_notifications.php?action=list&_=' + Date.now(),
 
                 {
 
@@ -398,7 +398,7 @@ const Sidebar = ({
 
                 await fetch(
 
-                    '/hello-gestion/php/user_notifications.php',
+                    import.meta.env.BASE_URL + 'php/user_notifications.php',
 
                     {
 
@@ -472,7 +472,7 @@ const Sidebar = ({
 
                 await fetch(
 
-                    '/hello-gestion/php/user_notifications.php',
+                    import.meta.env.BASE_URL + 'php/user_notifications.php',
 
                     {
 
@@ -544,7 +544,7 @@ const Sidebar = ({
 
                 const response = await fetch(
 
-                    '/hello-gestion/php/user_notifications.php',
+                    import.meta.env.BASE_URL + 'php/user_notifications.php',
 
                     {
 
@@ -664,7 +664,7 @@ const Sidebar = ({
 
                 const response = await fetch(
 
-                    '/hello-gestion/php/user_notifications.php',
+                    import.meta.env.BASE_URL + 'php/user_notifications.php',
 
                     {
 
@@ -3187,7 +3187,7 @@ const Sidebar = ({
 
                                 src={
 
-                                    `/hello-gestion/php/${user.avatar_path}`
+                                    `${import.meta.env.BASE_URL}php/${user.avatar_path}`
 
                                 }
 

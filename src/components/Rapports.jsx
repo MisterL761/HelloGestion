@@ -7,7 +7,7 @@ import {
 import MonthlyReport from './MonthlyReport';
 import { useToast, useConfirm } from './ToastProvider';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/hello-gestion/php';
+const API_BASE = import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'php';
 
 const MONTH_NAMES = [
     'Janvier','Février','Mars','Avril','Mai','Juin',

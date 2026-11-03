@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { compressImage } from '../utils/compressImage';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/hello-gestion/php';
+const API_BASE = import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'php';
 
 const formatDateForAPI = (date) => {
     if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
