@@ -104,6 +104,8 @@ ob_start();
 try {
 
     require_once __DIR__ . '/db.php';
+    require_once __DIR__ . '/schema_users.php';
+    ensureUsersSchema($pdo);
 
     header('Content-Type: application/json; charset=utf-8');
 
