@@ -31,6 +31,13 @@ function getTauxFromCoef(coef) {
     return 0.00;
 }
 
+// Prime de palier : 1 % du dernier palier de 10 000 € atteint, de 50 000 € à 100 000 € de CA HT.
+function getPrimePalier(ca) {
+    if (ca < 50000) return 0;
+    const palier = Math.min(Math.floor(ca / 10000) * 10000, 100000);
+    return palier * 0.01;
+}
+
 
 
 const emptyVente = () => ({ id: uid(), type: 'vente', client: '', note: '', venteHT: '', achatHT: '', metre: false, partage: '' });
@@ -181,12 +188,8 @@ const CommissionCalculator = ({ user, targetUserId = null }) => {
 
         const totalFrais = frais.reduce((s, f) => s + (parseFloat(f.montant) || 0), 0);
 
-        // Primes selon le document patronal : un seul palier, le plus élevé atteint.
-        const prime = totalCA >= 100000 ? 1000
-            : totalCA >= 90000 ? 500
-            : totalCA >= 80000 ? 400
-            : totalCA >= 70000 ? 300
-            : 0;
+        // Prime de palier : un seul palier, le plus élevé atteint, ajoutée à la commission.
+        const prime = getPrimePalier(totalCA);
 
         const brut       = Math.max(totalCom + prime - totalDecom, 0);
 
