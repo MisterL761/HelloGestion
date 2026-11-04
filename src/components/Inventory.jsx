@@ -319,6 +319,55 @@ const getCategoryLabel = (category) => {
 
 
 // ================================================================
+// VOIR PLUS
+// ================================================================
+
+// Nombre de produits affichés à la fois (cartes et tableau)
+const PRODUITS_PAR_PAGE = 24;
+
+const VoirPlusButton = ({ shown, total, onClick }) => {
+
+    if (shown >= total) {
+        return null;
+    }
+
+    const restants = total - shown;
+
+    return (
+        <div className="flex flex-col items-center gap-2 mt-6">
+            <p className="text-xs text-gray-400">
+                {shown} produits affichés sur {total}
+            </p>
+            <button
+                type="button"
+                onClick={onClick}
+                className="
+                    inline-flex
+                    items-center
+                    gap-2
+                    px-5
+                    py-2.5
+                    rounded-xl
+                    bg-white
+                    border
+                    border-gray-200
+                    text-sm
+                    font-semibold
+                    text-gray-700
+                    shadow-sm
+                    hover:bg-gray-50
+                    hover:border-gray-300
+                    transition-colors
+                "
+            >
+                Voir plus ({Math.min(restants, PRODUITS_PAR_PAGE)} de plus)
+            </button>
+        </div>
+    );
+};
+
+
+// ================================================================
 // COMPOSANT PRINCIPAL
 // ================================================================
 
@@ -369,6 +418,32 @@ const Inventory = ({
     const [viewMode, setViewMode] = useState(
         () => sessionStorage.getItem('inventory_view_mode') || 'new'
     );
+
+    // « Voir plus » : on n'affiche que PRODUITS_PAR_PAGE produits à la fois.
+    // L'affichage repart de la première page dès que la recherche ou un filtre change.
+    const filtresKey = [
+        searchTerm,
+        supplierFilter,
+        categoryFilter,
+        conditionnementFilter,
+        statusFilter
+    ].join('|');
+
+    const [pagination, setPagination] = useState({
+        key: filtresKey,
+        count: PRODUITS_PAR_PAGE
+    });
+
+    const visibleCount =
+        pagination.key === filtresKey
+            ? pagination.count
+            : PRODUITS_PAR_PAGE;
+
+    const handleVoirPlus = () =>
+        setPagination({
+            key: filtresKey,
+            count: visibleCount + PRODUITS_PAR_PAGE
+        });
 
     const handleViewMode = (mode) => {
         setViewMode(mode);
@@ -515,6 +590,9 @@ const Inventory = ({
             matchStatus
         );
     });
+
+    // Produits réellement affichés (les compteurs et l'export gardent filteredItems)
+    const visibleItems = filteredItems.slice(0, visibleCount);
 
 
     // ============================================================
@@ -1504,6 +1582,8 @@ const Inventory = ({
                                 item.material ||
                                 'Produit'
                             }
+                            loading="lazy"
+                            decoding="async"
                             className="
                                 w-full
                                 h-full
@@ -1927,7 +2007,7 @@ const Inventory = ({
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-100">
-                                {filteredItems.map((item) => (
+                                {visibleItems.map((item) => (
                                     <InventoryItemRow
                                         key={item.id}
                                         item={item}
@@ -1941,6 +2021,12 @@ const Inventory = ({
                         </table>
                     </div>
                 )}
+
+                <VoirPlusButton
+                    shown={visibleItems.length}
+                    total={filteredItems.length}
+                    onClick={handleVoirPlus}
+                />
             </div>
         );
     }
@@ -2666,7 +2752,7 @@ const Inventory = ({
                             "
                         >
 
-                            {filteredItems.map(
+                            {visibleItems.map(
                                 (item) => (
 
                                     <ProductCard
@@ -2680,6 +2766,12 @@ const Inventory = ({
                         </div>
 
                     )}
+
+                    <VoirPlusButton
+                        shown={visibleItems.length}
+                        total={filteredItems.length}
+                        onClick={handleVoirPlus}
+                    />
 
                 </section>
 
