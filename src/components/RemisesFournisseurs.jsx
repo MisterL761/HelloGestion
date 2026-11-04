@@ -6,6 +6,8 @@ const API = `${API_BASE}/remises_fournisseurs_api.php`;
 
 // Hauteur au-delà de laquelle une carte est repliée avec un bouton « Voir plus »
 const HAUTEUR_REPLIEE = 320;
+// Hauteur maximale d'une carte dépliée : au-delà, la carte défile à l'intérieur
+const HAUTEUR_DEPLIEE = 520;
 
 const fournisseurVide = () => ({
   nom: "",
@@ -306,6 +308,19 @@ const styles = `
   overflow: hidden;
   transition: max-height .35s ease;
 }
+/* Carte dépliée : son contenu défile à l'intérieur, sans faire défiler la page */
+.remise-collapse.is-open {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+}
+.remise-collapse.is-open::-webkit-scrollbar {
+  width: 6px;
+}
+.remise-collapse.is-open::-webkit-scrollbar-thumb {
+  background: #fcd34d;
+  border-radius: 999px;
+}
 .remise-collapse.is-collapsed::after {
   content: "";
   position: absolute;
@@ -545,12 +560,14 @@ function VoirPlus({ children }) {
 
   // Petite marge : on ne replie pas une carte pour quelques pixels
   const tropLong = hauteur > HAUTEUR_REPLIEE + 60;
-  const maxHeight = !tropLong ? "none" : `${ouvert ? hauteur : HAUTEUR_REPLIEE}px`;
+  const maxHeight = !tropLong
+    ? "none"
+    : `${ouvert ? Math.min(hauteur, HAUTEUR_DEPLIEE) : HAUTEUR_REPLIEE}px`;
 
   return (
     <>
       <div
-        className={`remise-collapse${tropLong && !ouvert ? " is-collapsed" : ""}`}
+        className={`remise-collapse${tropLong && !ouvert ? " is-collapsed" : ""}${ouvert ? " is-open" : ""}`}
         style={{ maxHeight }}
       >
         <div ref={contenuRef}>{children}</div>
