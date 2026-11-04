@@ -14,9 +14,7 @@ const fournisseurVide = () => ({
   categorie: "",
   remises: [],
   promotions: [],
-  contact: "",
-  email: "",
-  telephone: "",
+  contacts: [],
 });
 
 const styles = `
@@ -254,6 +252,11 @@ const styles = `
   gap: 10px;
   margin-top: 6px;
   font-size: 12px;
+}
+.remise-contact-item + .remise-contact-item {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #e2e8f0;
 }
 .remise-contact-links a {
   color: #475569;
@@ -638,26 +641,32 @@ function FournisseurCard({ fournisseur, onEdit }) {
           )}
         </VoirPlus>
 
-        {(fournisseur.contact || fournisseur.email || fournisseur.telephone) && (
+        {fournisseur.contacts.length > 0 && (
           <div className="remise-contact">
-            <div className="remise-contact-title">Contact privilégié</div>
-
-            {fournisseur.contact && (
-              <div className="remise-contact-name">{fournisseur.contact}</div>
-            )}
-
-            <div className="remise-contact-links">
-              {fournisseur.email && (
-                <a href={`mailto:${fournisseur.email}`}>
-                  ✉ {fournisseur.email}
-                </a>
-              )}
-              {fournisseur.telephone && (
-                <a href={`tel:${fournisseur.telephone.replace(/\s/g, "")}`}>
-                  ☎ {fournisseur.telephone}
-                </a>
-              )}
+            <div className="remise-contact-title">
+              {fournisseur.contacts.length > 1 ? "Contacts privilégiés" : "Contact privilégié"}
             </div>
+
+            {fournisseur.contacts.map((contact, index) => (
+              <div className="remise-contact-item" key={`contact-${index}`}>
+                {contact.nom && (
+                  <div className="remise-contact-name">{contact.nom}</div>
+                )}
+
+                <div className="remise-contact-links">
+                  {contact.email && (
+                    <a href={`mailto:${contact.email}`}>
+                      ✉ {contact.email}
+                    </a>
+                  )}
+                  {contact.telephone && (
+                    <a href={`tel:${contact.telephone.replace(/\s/g, "")}`}>
+                      ☎ {contact.telephone}
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
@@ -698,9 +707,7 @@ const depuisFormulaire = (f) => ({
     ...p,
     dates: datesTexte.split("\n").map((d) => d.trim()).filter(Boolean),
   })),
-  contact: f.contact,
-  email: f.email,
-  telephone: f.telephone,
+  contacts: f.contacts,
 });
 
 function FournisseurForm({ fournisseur, onCancel, onSaved, onDeleted }) {
@@ -825,12 +832,24 @@ function FournisseurForm({ fournisseur, onCancel, onSaved, onDeleted }) {
           + Ajouter une promotion
         </button>
 
-        <h3 className="remise-section-title">Contact privilégié</h3>
-        <div className="remise-form-grid">
-          <Champ label="Nom du contact" value={form.contact} onChange={set("contact")} />
-          <Champ label="Téléphone" value={form.telephone} onChange={set("telephone")} />
-          <Champ label="E-mail" value={form.email} onChange={set("email")} />
-        </div>
+        <h3 className="remise-section-title">Contacts privilégiés</h3>
+        {form.contacts.map((c, i) => (
+          <div className="remise-form-block" key={`c-${i}`}>
+            <div className="remise-form-grid">
+              <Champ label="Nom du contact" value={c.nom} onChange={setLigne("contacts", i, "nom")} />
+              <Champ label="Téléphone" value={c.telephone} onChange={setLigne("contacts", i, "telephone")} />
+              <Champ label="E-mail" value={c.email} onChange={setLigne("contacts", i, "email")} />
+            </div>
+            <button type="button" className="remise-btn remise-btn-danger remise-btn-icon remise-form-remove"
+              onClick={() => retirerLigne("contacts", i)} title="Retirer ce contact">
+              ✕
+            </button>
+          </div>
+        ))}
+        <button type="button" className="remise-btn remise-form-add"
+          onClick={() => ajouterLigne("contacts", { nom: "", email: "", telephone: "" })}>
+          + Ajouter un contact
+        </button>
 
         <div className="remise-form-actions">
           {fournisseur.id && (
@@ -879,8 +898,9 @@ export default function RemisesFournisseurs() {
       const contenu = [
         fournisseur.nom,
         fournisseur.categorie,
-        fournisseur.contact,
-        fournisseur.email,
+        ...fournisseur.contacts.map(
+          (contact) => `${contact.nom} ${contact.email} ${contact.telephone}`
+        ),
         ...fournisseur.remises.map(
           (remise) =>
             `${remise.taux} ${remise.produit} ${remise.conditions}`
