@@ -1072,6 +1072,8 @@ const Sidebar = ({
 
 
 
+                {/* shrink-0 : un libellé long (« Commandes fournisseurs »)
+                    ne doit pas écraser l'icône */}
                 <Icon
 
                     size={24}
@@ -1080,9 +1082,9 @@ const Sidebar = ({
 
                         isCollapsed
 
-                            ? ''
+                            ? 'shrink-0'
 
-                            : 'mr-3'
+                            : 'shrink-0 mr-3'
 
                     }
 
