@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Skeleton from './Skeleton';
+import { useToast, useConfirm } from './ToastProvider';
 import {
     Phone, Plus, Trash2, ChevronDown, ChevronUp,
     Search, Pencil, Check, X, Book, Mail, Printer, History
@@ -83,6 +84,9 @@ const DeletionLogs = ({ onClose }) => {
 };
 
 const Annuaire = () => {
+    const toast   = useToast();
+    const confirm = useConfirm();
+
     const [canViewLogs, setCanViewLogs]     = useState(false);
     const [showLogs, setShowLogs]           = useState(false);
 
@@ -178,7 +182,13 @@ const Annuaire = () => {
     // ── Delete supplier ───────────────────────────────────
 
     const handleDeleteSupplier = async (id) => {
-        if (!window.confirm('Supprimer ce fournisseur et tous ses numéros ?')) return;
+        const supplier = suppliers.find(s => s.id === id);
+        const nbContacts = supplier?.phones.length ?? 0;
+        const ok = await confirm(
+            `Supprimer le fournisseur « ${supplier?.name ?? ''} »`
+            + (nbContacts > 0 ? ` et ses ${nbContacts} contact${nbContacts > 1 ? 's' : ''} ?` : ' ?')
+        );
+        if (!ok) return;
         try {
             const res = await fetch(`${API_BASE}/annuaire.php`, {
                 method: 'DELETE',
@@ -188,13 +198,14 @@ const Annuaire = () => {
             });
             const data = await res.json();
             if (!data.success) {
-                window.alert(data.message || 'Suppression impossible.');
+                toast.error(data.message || 'Suppression impossible.');
                 return;
             }
             setSuppliers(prev => prev.filter(s => s.id !== id));
             if (expandedId === id) setExpandedId(null);
+            toast.success(`Fournisseur « ${supplier?.name ?? ''} » supprimé`);
         } catch {
-            window.alert('Suppression impossible (erreur réseau).');
+            toast.error('Suppression impossible (erreur réseau).');
         }
     };
 
@@ -266,7 +277,9 @@ const Annuaire = () => {
     // ── Delete phone ──────────────────────────────────────
 
     const handleDeletePhone = async (supplierId, phoneId) => {
-        if (!window.confirm('Supprimer ce numéro ?')) return;
+        const phone = suppliers.find(s => s.id === supplierId)?.phones.find(p => p.id === phoneId);
+        const contactName = phone?.label || phone?.numero || '';
+        if (!await confirm(`Supprimer le contact « ${contactName} » ?`)) return;
         try {
             const res = await fetch(`${API_BASE}/annuaire.php`, {
                 method: 'DELETE',
@@ -276,7 +289,7 @@ const Annuaire = () => {
             });
             const data = await res.json();
             if (!data.success) {
-                window.alert(data.message || 'Suppression impossible.');
+                toast.error(data.message || 'Suppression impossible.');
                 return;
             }
             setSuppliers(prev => prev.map(s =>
@@ -284,7 +297,10 @@ const Annuaire = () => {
                     ? { ...s, phones: s.phones.filter(p => p.id !== phoneId) }
                     : s
             ));
-        } catch { /* ignore */ }
+            toast.success(`Contact « ${contactName} » supprimé`);
+        } catch {
+            toast.error('Suppression impossible (erreur réseau).');
+        }
     };
 
     // ── Edit phone ────────────────────────────────────────
