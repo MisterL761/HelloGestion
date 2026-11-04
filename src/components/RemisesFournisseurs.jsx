@@ -1,758 +1,23 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useToast, useConfirm } from "./ToastProvider";
+import { API_BASE } from "../utils/constants";
 
-const fournisseurs = [
-  {
-    nom: "ATULAM",
-    categorie: "Menuiseries bois",
-    remises: [
-      {
-        taux: "41 %",
-        produit: "Ensemble du tarif public HT",
-        conditions: "Remise négociée sur l’ensemble du tarif public HT.",
-      },
-    ],
-    promotions: [
-      {
-        titre: "5 % de remise supplémentaire",
-        produit: "Commandes passées via la solution en ligne PACOMME",
-        dates: ["20 mars au 18 avril", "12 juin au 11 juillet", "25 septembre au 24 octobre"],
-        conditions: "La commande doit être passée sur la solution en ligne PACOMME.",
-      },
-    ],
-    contact: "Sarah VEIBERT",
-    email: "sveibert@atulam.fr",
-    telephone: "07 64 21 94 84",
-  },
-  {
-    nom: "BOSCHAT LAVEIX",
-    categorie: "Équipement et matériel de pose",
-    remises: [
-      {
-        taux: "À consulter",
-        produit: "Produits et tarifs négociés",
-        conditions: "Consulter les produits, tarifs négociés et bons de commande.",
-      },
-    ],
-    promotions: [],
-    contact: "Eric DURIBREUX",
-    email: "e.duribreux@boschat-laveix.com",
-    telephone: "06 11 98 39 70",
-  },
-  {
-    nom: "CETAL",
-    categorie: "Volets battants, portails et clôtures",
-    remises: [
-      {
-        taux: "35 %",
-        produit: "Toutes les gammes de volets battants",
-        conditions: "Remise négociée sur toutes les gammes de volets.",
-      },
-      {
-        taux: "35 %",
-        produit: "Motorisation des volets battants",
-        conditions: "Remise négociée sur la motorisation.",
-      },
-      {
-        taux: "50 %",
-        produit: "Gamme de portails et clôtures (évolution)",
-        conditions: "Remise négociée sur la gamme de portails et clôtures (évolution).",
-      },
-      {
-        taux: "35 %",
-        produit: "Motorisation et garde-corps",
-        conditions: "Remise négociée sur la motorisation et les garde-corps.",
-      },
-    ],
-    promotions: [
-      {
-        titre: "6 % de remise supplémentaire",
-        produit: "Volets battants isolés",
-        dates: ["Janvier à mars"],
-        conditions: "Remise supplémentaire sur toutes les commandes de volets battants isolés.",
-      },
-      {
-        titre: "10 % de remise",
-        produit: "Portails de la gamme Création",
-        dates: ["Janvier à mars"],
-        conditions: "Offre promotionnelle sur les portails de la gamme Création.",
-      },
-      {
-        titre: "10 % de remise",
-        produit: "Portails tôle : Hercule, Titan, Planétaire et Pluton",
-        dates: ["Janvier à mars"],
-        conditions: "Offre promotionnelle sur les modèles indiqués.",
-      },
-      {
-        titre: "15 % de remise",
-        produit: "Clôtures",
-        dates: ["Janvier à mars"],
-        conditions: "Offre promotionnelle sur les clôtures.",
-      },
-      {
-        titre: "10 % de remise",
-        produit: "Garde-corps",
-        dates: ["Janvier à mars"],
-        conditions: "Hors main courante.",
-      },
-      {
-        titre: "4 % de remise supplémentaire",
-        produit: "Opérations salons / portes ouvertes",
-        dates: ["4 semaines consécutives au choix"],
-        conditions: "Remise supplémentaire hors motorisation. Choisir 4 semaines consécutives.",
-      },
-    ],
-    contact: "Régis BERGAM",
-    email: "directioncommerciale@cetal54.fr",
-    telephone: "06 75 36 99 51",
-  },
-  {
-    nom: "EHRET",
-    categorie: "Volets battants",
-    remises: [
-      {
-        taux: "41 %",
-        produit: "Ensemble du tarif public HT",
-        conditions: "Remise négociée sur l’ensemble du tarif public HT.",
-      },
-    ],
-    promotions: [
-      {
-        titre: "5 % de remise supplémentaire",
-        produit: "Produits EHRET",
-        dates: ["10 mars au 30 avril", "2 juin au 15 juillet", "15 septembre au 31 octobre"],
-        conditions: "Remise supplémentaire pendant les périodes indiquées.",
-      },
-    ],
-    contact: "Rémy POUTOT",
-    email: "remy.poutot@ehret.com",
-    telephone: "06 48 76 45 21",
-  },
-  {
-    nom: "ELCIA / PRODEVIS",
-    categorie: "Services",
-    remises: [
-      {
-        taux: "150 €/mois",
-        produit: "Licence PRODEVIS",
-        conditions: "Prix négocié au lieu de 175 €/mois.",
-      },
-      {
-        taux: "55 €/mois",
-        produit: "Licence supplémentaire PRODEVIS",
-        conditions: "Prix négocié au lieu de 60 €/mois.",
-      },
-    ],
-    promotions: [],
-    contact: "Pierre-Louis GERLIER",
-    email: "plgerlier@elcia.com",
-    telephone: "06 13 16 22 54",
-  },
-  {
-    nom: "ELDO",
-    categorie: "Services",
-    remises: [
-      {
-        taux: "2 590 € HT/an",
-        produit: "Abonnement ELDO",
-        conditions: "Abonnement négocié au lieu de 3 200 € HT/an.",
-      },
-    ],
-    promotions: [],
-    contact: "Alexandre VASSEUR",
-    email: "alexandre.vasseur@eldo.com",
-    telephone: "07 57 45 90 59",
-  },
-  {
-    nom: "FILTERSUN",
-    categorie: "Stores et moustiquaires",
-    remises: [
-      {
-        taux: "À consulter",
-        produit: "Stores intérieurs et moustiquaires",
-        conditions: "Consulter le détail des remises négociées.",
-      },
-    ],
-    promotions: [
-      {
-        titre: "10 % de remise supplémentaire",
-        produit: "Stores intérieurs et moustiquaires",
-        dates: ["2 périodes de 4 semaines consécutives au choix"],
-        conditions: "Commande passée depuis l’espace PRO MARITON. Hors cumul avec une période de promotion.",
-      },
-    ],
-    contact: "Cédric PEREZ",
-    email: "c.perez@mariton.fr",
-    telephone: "06 76 45 14 79",
-  },
-  {
-    nom: "KRAFTÉO",
-    categorie: "Services",
-    remises: [
-      {
-        taux: "-10 %",
-        produit: "Abonnement pour le pack de 5 licences",
-        conditions: "Remise sur le tarif public de 170 € HT/mois.",
-      },
-      {
-        taux: "-10 %",
-        produit: "Licences supplémentaires",
-        conditions: "Remise sur le tarif public de 20 € HT/mois.",
-      },
-    ],
-    promotions: [],
-    contact: "Franck MOULIN",
-    email: "franck@krafteo.com",
-    telephone: "06 71 07 44 07",
-  },
-  {
-    nom: "LAKAL",
-    categorie: "Volets roulants",
-    remises: [
-      {
-        taux: "35 %",
-        produit: "Potentiel de commande jusqu’à 89 999 €",
-        conditions: "Remise négociée selon le potentiel de commande.",
-      },
-      {
-        taux: "36,5 %",
-        produit: "Potentiel de commande de 90 000 € à 199 999 €",
-        conditions: "Remise négociée selon le potentiel de commande.",
-      },
-      {
-        taux: "38 %",
-        produit: "Potentiel de commande supérieur à 200 000 €",
-        conditions: "Remise négociée selon le potentiel de commande.",
-      },
-    ],
-    promotions: [
-      {
-        titre: "5 % de remise supplémentaire",
-        produit: "Produits LAKAL",
-        dates: ["3 périodes de 3 semaines consécutives au choix"],
-        conditions: "Choisir 3 périodes de 3 semaines consécutives pour bénéficier de la promotion.",
-      },
-    ],
-    contact: "David SEGURA",
-    email: "david.segura@lakal-france.fr",
-    telephone: "06 73 89 19 07",
-  },
-  {
-    nom: "LE MOINE",
-    categorie: "Stores bannes et pergolas",
-    remises: [
-      {
-        taux: "53 %",
-        produit: "Ensemble de la gamme pergolas",
-        conditions: "Remise négociée sur l’ensemble de la gamme pergolas.",
-      },
-      {
-        taux: "52 %",
-        produit: "Stores extérieurs, corbeilles et toiles confectionnées",
-        conditions: "Remise négociée sur les gammes indiquées.",
-      },
-      {
-        taux: "60 %",
-        produit: "Store Jade",
-        conditions: "Remise négociée spécifique au store Jade.",
-      },
-      {
-        taux: "55 %",
-        produit: "Store Ambre",
-        conditions: "Remise négociée spécifique au store Ambre.",
-      },
-      {
-        taux: "52 %",
-        produit: "Brise-soleil orientable et caisson",
-        conditions: "Remise négociée sur la gamme indiquée.",
-      },
-    ],
-    promotions: [
-      {
-        titre: "10 % de remise supplémentaire",
-        produit: "Produits de la gamme Marquises",
-        dates: ["10 jours consécutifs au choix"],
-        conditions: "Remise supplémentaire à votre client pour l’achat d’un produit de la gamme Marquises.",
-      },
-      {
-        titre: "Moteur solaire au prix du moteur radio IO Somfy",
-        produit: "Stores de la gamme autonome",
-        dates: ["23 février au 26 avril"],
-        conditions: "Pour l’achat d’un store de la gamme autonome.",
-      },
-      {
-        titre: "8 % de remise supplémentaire",
-        produit: "Pergolas de la gamme Marquises",
-        dates: ["23 février au 26 avril"],
-        conditions: "Remise supplémentaire pour toute commande d’une pergola de la gamme Marquises.",
-      },
-      {
-        titre: "Moteur radio IO Somfy offert",
-        produit: "Stores",
-        dates: ["23 février au 26 avril"],
-        conditions: "Pour 1 € de plus sur l’achat d’un store.",
-      },
-      {
-        titre: "10 % de remise supplémentaire",
-        produit: "Carports de la gamme Marquises",
-        dates: ["14 septembre au 31 octobre"],
-        conditions: "Remise supplémentaire pour toute commande d’un carport de la gamme Marquises.",
-      },
-    ],
-    contact: "Rudy BOYAVAL",
-    email: "rboyaval@stores-marquises.fr",
-    telephone: "06 32 92 28 97",
-  },
-  {
-    nom: "MARITON",
-    categorie: "Stores et moustiquaires",
-    remises: [
-      {
-        taux: "55 %",
-        produit: "Stores intérieurs",
-        conditions: "Remise négociée sur les stores intérieurs.",
-      },
-      {
-        taux: "50 %",
-        produit: "Moustiquaires",
-        conditions: "Remise négociée sur les moustiquaires.",
-      },
-      {
-        taux: "45 %",
-        produit: "Stores extérieurs Rollo et BSO",
-        conditions: "Remise négociée sur les stores extérieurs indiqués.",
-      },
-    ],
-    promotions: [
-      {
-        titre: "10 % de remise supplémentaire",
-        produit: "Stores intérieurs et moustiquaires",
-        dates: ["2 périodes de 4 semaines consécutives au choix"],
-        conditions: "Commande passée depuis l’espace PRO MARITON. Hors cumul avec une période de promotion.",
-      },
-    ],
-    contact: "Cédric PEREZ",
-    email: "c.perez@mariton.fr",
-    telephone: "06 76 45 14 79",
-  },
-  {
-    nom: "MARQUISES",
-    categorie: "Stores bannes et pergolas",
-    remises: [
-      {
-        taux: "51 %",
-        produit: "Stores bannes",
-        conditions: "Remise négociée sur les stores bannes.",
-      },
-      {
-        taux: "40 %",
-        produit: "Pergolas",
-        conditions: "Remise négociée sur les pergolas.",
-      },
-      {
-        taux: "50 %",
-        produit: "Stores intérieurs",
-        conditions: "Remise négociée sur les stores intérieurs.",
-      },
-    ],
-    promotions: [
-      {
-        titre: "10 % de remise supplémentaire",
-        produit: "Stores bannes Marina, Tobago, Antalya, Océania, Hemera, Hermès, Kuba et Artemis",
-        dates: ["23 mars au 19 avril", "11 mai au 7 juin", "14 septembre au 11 octobre"],
-        conditions: "Remise supplémentaire sur les modèles listés.",
-      },
-      {
-        titre: "LED offertes",
-        produit: "Pergoklim Integral et Access",
-        dates: ["23 mars au 19 avril", "11 mai au 7 juin", "14 septembre au 11 octobre"],
-        conditions: "Hors transformateur et récepteur radio.",
-      },
-      {
-        titre: "10 % de remise supplémentaire",
-        produit: "Alizéo et options",
-        dates: ["23 mars au 19 avril", "11 mai au 7 juin", "14 septembre au 11 octobre"],
-        conditions: "Remise supplémentaire sur Alizéo et ses options.",
-      },
-      {
-        titre: "10 % de remise supplémentaire",
-        produit: "Carports et options",
-        dates: ["23 mars au 19 avril", "11 mai au 7 juin", "14 septembre au 11 octobre"],
-        conditions: "Remise supplémentaire sur les carports et leurs options.",
-      },
-    ],
-    contact: "Christophe PICHOT",
-    email: "christophe.pichot@soliso.com",
-    telephone: "06 60 55 33 05",
-  },
-  {
-    nom: "MSE",
-    categorie: "À vérifier dans le dépliant",
-    remises: [],
-    promotions: [],
-    contact: "",
-    email: "",
-    telephone: "",
-  },
-  {
-    nom: "NICE",
-    categorie: "Automatisme et domotique",
-    remises: [
-      {
-        taux: "20 à 52 %",
-        produit: "Produits NICE",
-        conditions: "Remises variables selon les produits. Consulter le détail des remises.",
-      },
-    ],
-    promotions: [
-      {
-        titre: "Remise sur sélection de produits intérieur",
-        produit: "Portes de garage, MyBell seul et Screen EasyKit",
-        dates: ["19 janvier au 13 février"],
-        conditions: "Offre sur une sélection de produits intérieur. Consulter le détail de l’offre.",
-      },
-      {
-        titre: "Remise sur les produits phares",
-        produit: "Sélection de produits NICE",
-        dates: ["2 mars au 30 avril", "7 septembre au 30 octobre"],
-        conditions: "Consulter le détail de l’offre.",
-      },
-      {
-        titre: "Sélection solaire",
-        produit: "Solemyo 30W, kits solaires Screen et gestion des stores et volets roulants",
-        dates: ["15 juin au 17 juillet"],
-        conditions: "Offre sur la sélection solaire indiquée.",
-      },
-      {
-        titre: "Sélection sécurité",
-        produit: "Alarmes MyNice / Yubii Home, accessoires connectés, caméras, détecteurs de risques et contrôle d’accès",
-        dates: ["16 novembre au 21 décembre"],
-        conditions: "Offre sur la sélection sécurité indiquée.",
-      },
-    ],
-    contact: "Pierre-Julien GARDE",
-    email: "pj.garde@niceforyou.com",
-    telephone: "06 77 04 39 51",
-  },
-  {
-    nom: "NOVAFEN",
-    categorie: "Menuiseries XXL",
-    remises: [
-      {
-        taux: "40 %",
-        produit: "Ensemble du tarif public HT",
-        conditions: "Remise négociée sur l’ensemble du tarif public HT.",
-      },
-    ],
-    promotions: [],
-    contact: "Benjamin PININGRE",
-    email: "marketing@novafen.com",
-    telephone: "03 89 37 08 71",
-  },
-  {
-    nom: "PICARD SERRURES",
-    categorie: "Portes blindées",
-    remises: [
-      {
-        taux: "42 %",
-        produit: "Ensemble du tarif public HT",
-        conditions: "Remise négociée sur l’ensemble du tarif public HT.",
-      },
-    ],
-    promotions: [
-      {
-        titre: "5 % de remise supplémentaire",
-        produit: "Portes blindées",
-        dates: ["9 février au 27 mars", "7 septembre au 18 octobre"],
-        conditions: "Remise supplémentaire sur les portes blindées.",
-      },
-      {
-        titre: "Promotion liée à l’exposition",
-        produit: "Présentation d’une porte ou mini-porte en exposition",
-        dates: ["1 période de 4 semaines consécutives au choix"],
-        conditions: "Choisir une période de 4 semaines consécutives pour bénéficier de la promotion.",
-      },
-    ],
-    contact: "Régis DI DIA",
-    email: "rdidia@picard-serrures.com",
-    telephone: "06 22 43 24 97",
-  },
-  {
-    nom: "PROFERM",
-    categorie: "Menuiseries",
-    remises: [],
-    promotions: [
-      {
-        titre: "Choisissez votre vitrage",
-        produit: "Vitrage",
-        dates: ["20 mars au 15 mai"],
-        conditions: "Temps fort Experts Agréés PROFERM.",
-      },
-      {
-        titre: "Les couleurs standards HYBRIDE au prix de l’HYBRIDE blanc",
-        produit: "Menuiseries HYBRIDE",
-        dates: ["12 juin au 31 juillet"],
-        conditions: "Temps fort Experts Agréés PROFERM.",
-      },
-      {
-        titre: "La prime reprise",
-        produit: "Offre PROFERM",
-        dates: ["25 septembre au 15 novembre"],
-        conditions: "Temps fort Experts Agréés PROFERM.",
-      },
-    ],
-    contact: "",
-    email: "communication@proferm.com",
-    telephone: "03 21 77 42 20",
-  },
-  {
-    nom: "REVEL’HOME",
-    categorie: "Services",
-    remises: [
-      {
-        taux: "-10 %",
-        produit: "Abonnement",
-        conditions: "Abonnement négocié à 157,50 € HT/mois.",
-      },
-      {
-        taux: "-10 %",
-        produit: "Utilisateur supplémentaire",
-        conditions: "Utilisateur supplémentaire négocié à 22,50 € HT/mois.",
-      },
-    ],
-    promotions: [],
-    contact: "Charles PELLÉ",
-    email: "charles.pelle@revelhome.fr",
-    telephone: "06 61 08 17 31",
-  },
-  {
-    nom: "SDA",
-    categorie: "Portes de garage",
-    remises: [
-      {
-        taux: "53 %",
-        produit: "Ensemble du tarif public HT",
-        conditions: "Remise négociée sur l’ensemble du tarif public HT.",
-      },
-    ],
-    promotions: [
-      {
-        titre: "Easy Drive + au prix de Easy Drive",
-        produit: "Portes de garage",
-        dates: ["20 mars au 15 mai", "12 juin au 31 juillet", "25 septembre au 15 novembre"],
-        conditions: "Offre Easy Drive + au prix de Easy Drive.",
-      },
-      {
-        titre: "5 % de remise supplémentaire",
-        produit: "Portes blindées",
-        dates: ["9 février au 27 mars", "7 septembre au 18 octobre"],
-        conditions: "Offre indiquée dans le récapitulatif annuel du dépliant.",
-      },
-      {
-        titre: "Présentation d’une porte ou mini-porte en exposition",
-        produit: "Porte ou mini-porte en exposition",
-        dates: ["1 période de 4 semaines consécutives au choix"],
-        conditions: "Choisir une période de 4 semaines consécutives.",
-      },
-    ],
-    contact: "Jérôme DELASSUS",
-    email: "j.delassus@sda-gm.com",
-    telephone: "06 14 56 58 70",
-  },
-  {
-    nom: "SOMFY",
-    categorie: "Automatisme et domotique",
-    remises: [
-      {
-        taux: "20 à 52 %",
-        produit: "Produits Somfy",
-        conditions: "Remises variables selon les produits. Consulter le détail des remises.",
-      },
-    ],
-    promotions: [
-      {
-        titre: "Remise supplémentaire via le e-shop Somfy",
-        produit: "Produits Somfy disponibles sur le e-shop",
-        dates: ["20 avril au 10 mai", "6 au 26 juillet", "19 octobre au 8 novembre"],
-        conditions: "Remise supplémentaire via le e-shop Somfy.",
-      },
-    ],
-    contact: "Yoran LE BRUN",
-    email: "yoran.le.brun@somfy.com",
-    telephone: "06 29 76 33 31",
-  },
-  {
-    nom: "SOLISO",
-    categorie: "Stores bannes et pergolas",
-    remises: [
-      {
-        taux: "À consulter",
-        produit: "Sélections de produits selon la saison",
-        conditions: "Remises sur sélections de produits selon la saison.",
-      },
-    ],
-    promotions: [
-      {
-        titre: "Remise sur sélection de produits",
-        produit: "Sélection saisonnière SOLISO",
-        dates: [
-          "19 janvier au 13 février",
-          "2 mars au 30 avril",
-          "15 juin au 17 juillet",
-          "7 septembre au 30 octobre",
-          "16 novembre au 21 décembre",
-        ],
-        conditions: "Consulter les produits concernés par chaque opération.",
-      },
-    ],
-    contact: "Christophe PICHOT",
-    email: "christophe.pichot@soliso.com",
-    telephone: "06 60 55 33 05",
-  },
-  {
-    nom: "SOPROFEN",
-    categorie: "Volets roulants",
-    remises: [
-      {
-        taux: "À consulter",
-        produit: "Volets roulants, screens extérieurs et portes de garage",
-        conditions: "Consulter les tarifs par catégorie : volets, screens extérieurs et portes de garage.",
-      },
-    ],
-    promotions: [
-      {
-        titre: "10 % de remise supplémentaire",
-        produit: "Gammes VR, PG et PS",
-        dates: ["3 périodes de 4 semaines consécutives au choix"],
-        conditions: "Choisir 3 périodes de 4 semaines consécutives pour bénéficier de la promotion.",
-      },
-      {
-        titre: "Box TaHoma Switch pour 1 € de plus",
-        produit: "Commande de 6 volets roulants",
-        dates: ["1er janvier au 31 décembre"],
-        conditions: "Valable pour toute commande de 6 volets roulants avec motorisation solaire ou radio RS 100.",
-      },
-      {
-        titre: "5 % de remise",
-        produit: "Commandes lors de foires ou portes ouvertes",
-        dates: ["2 opérations maximum par an"],
-        conditions: "Durée de 3 semaines par opération.",
-      },
-    ],
-    contact: "Luc DELFILS",
-    email: "ldelfils@soprofen.fr",
-    telephone: "06 98 73 84 04",
-  },
-  {
-    nom: "VESTALYS",
-    categorie: "Services",
-    remises: [
-      {
-        taux: "Jusqu’à -30 %",
-        produit: "Assurance",
-        conditions: "Jusqu’à 30 % par rapport à l’assurance actuelle.",
-      },
-    ],
-    promotions: [],
-    contact: "Élodie RENAUT",
-    email: "contact@vestalys.fr",
-    telephone: "06 16 61 41 01",
-  },
-  {
-    nom: "VOLPRO",
-    categorie: "Stores et moustiquaires",
-    remises: [
-      {
-        taux: "67 %",
-        produit: "Ensemble du tarif public HT",
-        conditions: "Remise négociée sur l’ensemble du tarif public HT.",
-      },
-    ],
-    promotions: [
-      {
-        titre: "7 % de remise supplémentaire",
-        produit: "Moustiquaires",
-        dates: ["10 mars au 30 avril"],
-        conditions: "Remise supplémentaire sur la gamme moustiquaire.",
-      },
-      {
-        titre: "20 % de remise",
-        produit: "Duette, bandes verticales, rouleaux et Proscreen extérieurs",
-        dates: ["16 mars au 26 avril"],
-        conditions: "Remise sur les produits indiqués.",
-      },
-      {
-        titre: "7 % de remise supplémentaire",
-        produit: "Stores Proscreens extérieurs",
-        dates: ["2 juin au 15 juillet"],
-        conditions: "Remise supplémentaire sur les stores Proscreens extérieurs.",
-      },
-      {
-        titre: "20 % de remise sur les moustiquaires et 50 % sur les moteurs PowerView",
-        produit: "Moustiquaires et moteurs PowerView",
-        dates: ["1er septembre au 4 octobre"],
-        conditions: "Moteurs PowerView hors accessoires.",
-      },
-      {
-        titre: "7 % de remise supplémentaire",
-        produit: "Stores Multizone entre parclose : plissés, Duette et vénitiens",
-        dates: ["15 septembre au 31 octobre"],
-        conditions: "Remise supplémentaire sur les produits indiqués.",
-      },
-      {
-        titre: "Offre à venir",
-        produit: "Produits Volpro",
-        dates: ["2 au 24 novembre"],
-        conditions: "Détail de l’offre à consulter.",
-      },
-    ],
-    contact: "Dominique GRUTER",
-    email: "d.gruter@hde.nl",
-    telephone: "",
-  },
-  {
-    nom: "VOLTECH",
-    categorie: "Volets roulants",
-    remises: [
-      {
-        taux: "51 %",
-        produit: "Porte de garage",
-        conditions: "Remise négociée sur la porte de garage.",
-      },
-      {
-        taux: "55 %",
-        produit: "Radio filaire",
-        conditions: "Remise négociée sur le radio filaire.",
-      },
-      {
-        taux: "55 %",
-        produit: "Tradi radio et filaire",
-        conditions: "Remise négociée sur les produits tradi radio et filaire.",
-      },
-      {
-        taux: "57 %",
-        produit: "Radio solaire",
-        conditions: "Remise négociée sur le radio solaire.",
-      },
-    ],
-    promotions: [
-      {
-        titre: "5 % de remise supplémentaire",
-        produit: "Toutes les commandes",
-        dates: ["20 mars au 15 mai", "12 juin au 31 juillet", "25 septembre au 15 novembre"],
-        conditions: "Remise supplémentaire pendant les périodes indiquées.",
-      },
-      {
-        titre: "5 % de remise lors de foires / portes ouvertes",
-        produit: "Commandes passées lors d’événements",
-        dates: ["2 opérations maximum par an"],
-        conditions: "Durée de 3 semaines par opération.",
-      },
-    ],
-    contact: "Fabrice NIORT",
-    email: "fabrice.n@lesfermeturesvoltech.com",
-    telephone: "06 09 85 61 78",
-  },
-];
+const API = `${API_BASE}/remises_fournisseurs_api.php`;
+
+// Hauteur au-delà de laquelle une carte est repliée avec un bouton « Voir plus »
+const HAUTEUR_REPLIEE = 320;
+// Hauteur maximale d'une carte dépliée : au-delà, la carte défile à l'intérieur
+const HAUTEUR_DEPLIEE = 520;
+
+const fournisseurVide = () => ({
+  nom: "",
+  categorie: "",
+  remises: [],
+  promotions: [],
+  contact: "",
+  email: "",
+  telephone: "",
+});
 
 const styles = `
 .remises-page {
@@ -834,6 +99,8 @@ const styles = `
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+  /* Chaque carte garde sa hauteur : dérouler une carte n'étire pas sa voisine */
+  align-items: start;
 }
 .remise-card {
   background: white;
@@ -1034,6 +301,206 @@ const styles = `
     flex-direction: column;
   }
 }
+
+/* ── Voir plus ─────────────────────────────── */
+.remise-collapse {
+  position: relative;
+  overflow: hidden;
+  transition: max-height .35s ease;
+}
+/* Carte dépliée : son contenu défile à l'intérieur, sans faire défiler la page */
+.remise-collapse.is-open {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+}
+.remise-collapse.is-open::-webkit-scrollbar {
+  width: 6px;
+}
+.remise-collapse.is-open::-webkit-scrollbar-thumb {
+  background: #fcd34d;
+  border-radius: 999px;
+}
+.remise-collapse.is-collapsed::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 64px;
+  background: linear-gradient(to bottom, rgba(255,255,255,0), #fff);
+  pointer-events: none;
+}
+.remise-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 12px;
+  border: 1px solid #fde68a;
+  border-radius: 10px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .2s;
+}
+.remise-more:hover {
+  background: #fef3c7;
+}
+.remise-more-chevron {
+  display: inline-block;
+  transition: transform .25s ease;
+}
+.remise-more.is-open .remise-more-chevron {
+  transform: rotate(180deg);
+}
+
+/* ── Boutons ───────────────────────────────── */
+.remise-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.remise-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: white;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .2s, border-color .2s;
+}
+.remise-btn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+.remise-btn:disabled {
+  opacity: .5;
+  cursor: default;
+}
+.remise-btn-primary {
+  background: #FFB103;
+  border-color: #FFB103;
+  color: #1a1a1a;
+}
+.remise-btn-primary:hover {
+  background: #d49400;
+  border-color: #d49400;
+}
+.remise-btn-danger {
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+.remise-btn-danger:hover {
+  background: #fef2f2;
+  border-color: #fca5a5;
+}
+.remise-btn-icon {
+  padding: 6px 9px;
+}
+.remises-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+.remise-updated {
+  margin-top: 10px;
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+/* ── Formulaire d'édition ──────────────────── */
+.remise-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.remise-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.remise-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.remise-field label {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
+}
+.remise-field input,
+.remise-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: white;
+  color: #1f2937;
+  font: inherit;
+  font-size: 13px;
+  transition: border-color .2s, box-shadow .2s;
+}
+.remise-field textarea {
+  min-height: 60px;
+  resize: vertical;
+}
+.remise-field input:focus,
+.remise-field textarea:focus {
+  outline: none;
+  border-color: #FFB103;
+  box-shadow: 0 0 0 3px rgba(255, 177, 3, .18);
+}
+.remise-form-block {
+  position: relative;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+.remise-form-block .remise-form-grid {
+  padding-right: 36px;
+}
+.remise-form-remove {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+.remise-form-add {
+  align-self: flex-start;
+}
+.remise-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #f1f5f9;
+}
+.remise-form-actions-right {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+@media (max-width: 640px) {
+  .remise-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
 `;
 
 function RemiseLine({ remise }) {
@@ -1077,7 +544,50 @@ function PromotionLine({ promotion }) {
   );
 }
 
-function FournisseurCard({ fournisseur }) {
+// Replie le contenu trop long et ajoute un bouton « Voir plus » qui le déroule
+function VoirPlus({ children }) {
+  const contenuRef = useRef(null);
+  const [hauteur, setHauteur] = useState(0);
+  const [ouvert, setOuvert] = useState(false);
+
+  useLayoutEffect(() => {
+    const contenu = contenuRef.current;
+    if (!contenu) return undefined;
+    const observer = new ResizeObserver(() => setHauteur(contenu.scrollHeight));
+    observer.observe(contenu);
+    return () => observer.disconnect();
+  }, []);
+
+  // Petite marge : on ne replie pas une carte pour quelques pixels
+  const tropLong = hauteur > HAUTEUR_REPLIEE + 60;
+  const maxHeight = !tropLong
+    ? "none"
+    : `${ouvert ? Math.min(hauteur, HAUTEUR_DEPLIEE) : HAUTEUR_REPLIEE}px`;
+
+  return (
+    <>
+      <div
+        className={`remise-collapse${tropLong && !ouvert ? " is-collapsed" : ""}${ouvert ? " is-open" : ""}`}
+        style={{ maxHeight }}
+      >
+        <div ref={contenuRef}>{children}</div>
+      </div>
+      {tropLong && (
+        <button
+          type="button"
+          className={`remise-more${ouvert ? " is-open" : ""}`}
+          onClick={() => setOuvert((v) => !v)}
+          aria-expanded={ouvert}
+        >
+          {ouvert ? "Voir moins" : "Voir plus"}
+          <span className="remise-more-chevron">▾</span>
+        </button>
+      )}
+    </>
+  );
+}
+
+function FournisseurCard({ fournisseur, onEdit }) {
   const total = fournisseur.remises.length + fournisseur.promotions.length;
 
   return (
@@ -1087,46 +597,46 @@ function FournisseurCard({ fournisseur }) {
           <h2 className="remise-provider">{fournisseur.nom}</h2>
           <div className="remise-category">{fournisseur.categorie}</div>
         </div>
-        <span className="remise-count">
-          {total} {total > 1 ? "offres" : "offre"}
-        </span>
+        <div className="remise-header-actions">
+          <span className="remise-count">
+            {total} {total > 1 ? "offres" : "offre"}
+          </span>
+          <button type="button" className="remise-btn remise-btn-icon" onClick={onEdit} title="Modifier">
+            ✎ Modifier
+          </button>
+        </div>
       </div>
 
       <div className="remise-card-content">
-        {fournisseur.remises.length > 0 && (
-          <>
-            <h3 className="remise-section-title">
-              <span>●</span> Remises négociées
-            </h3>
-            {fournisseur.remises.map((remise, index) => (
-              <RemiseLine
-                remise={remise}
-                key={`${fournisseur.nom}-remise-${index}`}
-              />
-            ))}
-          </>
-        )}
+        <VoirPlus>
+          {fournisseur.remises.length > 0 && (
+            <>
+              <h3 className="remise-section-title">
+                <span>●</span> Remises négociées
+              </h3>
+              {fournisseur.remises.map((remise, index) => (
+                <RemiseLine remise={remise} key={`remise-${index}`} />
+              ))}
+            </>
+          )}
 
-        {fournisseur.promotions.length > 0 && (
-          <>
-            <h3 className="remise-section-title promo">
-              <span>◆</span> Promotions et offres
-            </h3>
-            {fournisseur.promotions.map((promotion, index) => (
-              <PromotionLine
-                promotion={promotion}
-                key={`${fournisseur.nom}-promo-${index}`}
-              />
-            ))}
-          </>
-        )}
+          {fournisseur.promotions.length > 0 && (
+            <>
+              <h3 className="remise-section-title promo">
+                <span>◆</span> Promotions et offres
+              </h3>
+              {fournisseur.promotions.map((promotion, index) => (
+                <PromotionLine promotion={promotion} key={`promo-${index}`} />
+              ))}
+            </>
+          )}
 
-        {fournisseur.remises.length === 0 &&
-          fournisseur.promotions.length === 0 && (
+          {total === 0 && (
             <div className="remise-empty">
               Les conditions de remise de ce fournisseur restent à compléter.
             </div>
           )}
+        </VoirPlus>
 
         {(fournisseur.contact || fournisseur.email || fournisseur.telephone) && (
           <div className="remise-contact">
@@ -1150,20 +660,222 @@ function FournisseurCard({ fournisseur }) {
             </div>
           </div>
         )}
+
+        {fournisseur.updated_by && (
+          <div className="remise-updated">
+            Modifié par {fournisseur.updated_by}
+          </div>
+        )}
       </div>
     </article>
   );
 }
 
+function Champ({ label, value, onChange, multiline = false, placeholder = "" }) {
+  return (
+    <div className="remise-field">
+      <label>{label}</label>
+      {multiline ? (
+        <textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
+      ) : (
+        <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
+      )}
+    </div>
+  );
+}
+
+// Les dates d'une promotion s'éditent dans une zone de texte, une date par ligne
+const versFormulaire = (f) => ({
+  ...f,
+  promotions: f.promotions.map((p) => ({ ...p, datesTexte: (p.dates || []).join("\n") })),
+});
+
+const depuisFormulaire = (f) => ({
+  nom: f.nom,
+  categorie: f.categorie,
+  remises: f.remises,
+  promotions: f.promotions.map(({ datesTexte, ...p }) => ({
+    ...p,
+    dates: datesTexte.split("\n").map((d) => d.trim()).filter(Boolean),
+  })),
+  contact: f.contact,
+  email: f.email,
+  telephone: f.telephone,
+});
+
+function FournisseurForm({ fournisseur, onCancel, onSaved, onDeleted }) {
+  const toast = useToast();
+  const confirm = useConfirm();
+  const [form, setForm] = useState(() => versFormulaire(fournisseur));
+  const [saving, setSaving] = useState(false);
+
+  const set = (champ) => (valeur) => setForm((f) => ({ ...f, [champ]: valeur }));
+  const setLigne = (liste, index, champ) => (valeur) =>
+    setForm((f) => ({
+      ...f,
+      [liste]: f[liste].map((l, i) => (i === index ? { ...l, [champ]: valeur } : l)),
+    }));
+  const ajouterLigne = (liste, ligne) => setForm((f) => ({ ...f, [liste]: [...f[liste], ligne] }));
+  const retirerLigne = (liste, index) =>
+    setForm((f) => ({ ...f, [liste]: f[liste].filter((_, i) => i !== index) }));
+
+  const enregistrer = async (e) => {
+    e.preventDefault();
+    if (!form.nom.trim()) {
+      toast.error("Le nom du fournisseur est requis.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch(API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ id: fournisseur.id ?? null, fournisseur: depuisFormulaire(form) }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        toast.error(data.message || "Enregistrement impossible.");
+        return;
+      }
+      toast.success(`« ${data.fournisseur.nom} » enregistré`);
+      onSaved(data.fournisseur);
+    } catch {
+      toast.error("Enregistrement impossible (erreur réseau).");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const supprimer = async () => {
+    if (!await confirm(`Supprimer le fournisseur « ${fournisseur.nom} » et toutes ses offres ?`)) return;
+    try {
+      const res = await fetch(API, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ id: fournisseur.id }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        toast.error(data.message || "Suppression impossible.");
+        return;
+      }
+      toast.success(`« ${fournisseur.nom} » supprimé`);
+      onDeleted(fournisseur.id);
+    } catch {
+      toast.error("Suppression impossible (erreur réseau).");
+    }
+  };
+
+  return (
+    <article className="remise-card">
+      <div className="remise-card-header">
+        <h2 className="remise-provider">
+          {fournisseur.id ? `Modifier ${fournisseur.nom}` : "Nouveau fournisseur"}
+        </h2>
+      </div>
+
+      <form className="remise-card-content remise-form" onSubmit={enregistrer}>
+        <div className="remise-form-grid">
+          <Champ label="Nom du fournisseur *" value={form.nom} onChange={set("nom")} />
+          <Champ label="Catégorie" value={form.categorie} onChange={set("categorie")} />
+        </div>
+
+        <h3 className="remise-section-title">
+          <span>●</span> Remises négociées
+        </h3>
+        {form.remises.map((r, i) => (
+          <div className="remise-form-block" key={`r-${i}`}>
+            <div className="remise-form-grid">
+              <Champ label="Taux" value={r.taux} onChange={setLigne("remises", i, "taux")} placeholder="ex : 35 %" />
+              <Champ label="Produit" value={r.produit} onChange={setLigne("remises", i, "produit")} />
+            </div>
+            <Champ label="Conditions" value={r.conditions} onChange={setLigne("remises", i, "conditions")} multiline />
+            <button type="button" className="remise-btn remise-btn-danger remise-btn-icon remise-form-remove"
+              onClick={() => retirerLigne("remises", i)} title="Retirer cette remise">
+              ✕
+            </button>
+          </div>
+        ))}
+        <button type="button" className="remise-btn remise-form-add"
+          onClick={() => ajouterLigne("remises", { taux: "", produit: "", conditions: "" })}>
+          + Ajouter une remise
+        </button>
+
+        <h3 className="remise-section-title promo">
+          <span>◆</span> Promotions et offres
+        </h3>
+        {form.promotions.map((p, i) => (
+          <div className="remise-form-block" key={`p-${i}`}>
+            <div className="remise-form-grid">
+              <Champ label="Titre" value={p.titre} onChange={setLigne("promotions", i, "titre")} placeholder="ex : 10 % de remise" />
+              <Champ label="Produit concerné" value={p.produit} onChange={setLigne("promotions", i, "produit")} />
+            </div>
+            <Champ label="Dates (une par ligne)" value={p.datesTexte} onChange={setLigne("promotions", i, "datesTexte")} multiline />
+            <Champ label="Conditions" value={p.conditions} onChange={setLigne("promotions", i, "conditions")} multiline />
+            <button type="button" className="remise-btn remise-btn-danger remise-btn-icon remise-form-remove"
+              onClick={() => retirerLigne("promotions", i)} title="Retirer cette promotion">
+              ✕
+            </button>
+          </div>
+        ))}
+        <button type="button" className="remise-btn remise-form-add"
+          onClick={() => ajouterLigne("promotions", { titre: "", produit: "", datesTexte: "", conditions: "" })}>
+          + Ajouter une promotion
+        </button>
+
+        <h3 className="remise-section-title">Contact privilégié</h3>
+        <div className="remise-form-grid">
+          <Champ label="Nom du contact" value={form.contact} onChange={set("contact")} />
+          <Champ label="Téléphone" value={form.telephone} onChange={set("telephone")} />
+          <Champ label="E-mail" value={form.email} onChange={set("email")} />
+        </div>
+
+        <div className="remise-form-actions">
+          {fournisseur.id && (
+            <button type="button" className="remise-btn remise-btn-danger" onClick={supprimer}>
+              Supprimer le fournisseur
+            </button>
+          )}
+          <div className="remise-form-actions-right">
+            <button type="button" className="remise-btn" onClick={onCancel}>
+              Annuler
+            </button>
+            <button type="submit" className="remise-btn remise-btn-primary" disabled={saving}>
+              {saving ? "Enregistrement…" : "Enregistrer"}
+            </button>
+          </div>
+        </div>
+      </form>
+    </article>
+  );
+}
+
 export default function RemisesFournisseurs() {
+  const [fournisseurs, setFournisseurs] = useState(null);
+  const [erreur, setErreur] = useState(null);
   const [recherche, setRecherche] = useState("");
+  const [enEdition, setEnEdition] = useState(null); // id du fournisseur, ou "nouveau"
+
+  useEffect(() => {
+    fetch(API, { credentials: "include" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) setFournisseurs(data.fournisseurs);
+        else setErreur(data.message || "Impossible de charger les remises.");
+      })
+      .catch(() => setErreur("Erreur réseau."));
+  }, []);
+
+  const liste = useMemo(() => fournisseurs || [], [fournisseurs]);
 
   const fournisseursFiltres = useMemo(() => {
     const terme = recherche.trim().toLowerCase();
 
-    if (!terme) return fournisseurs;
+    if (!terme) return liste;
 
-    return fournisseurs.filter((fournisseur) => {
+    return liste.filter((fournisseur) => {
       const contenu = [
         fournisseur.nom,
         fournisseur.categorie,
@@ -1183,17 +895,30 @@ export default function RemisesFournisseurs() {
 
       return contenu.includes(terme);
     });
-  }, [recherche]);
+  }, [recherche, liste]);
 
-  const totalRemises = fournisseurs.reduce(
+  const totalRemises = liste.reduce(
     (total, fournisseur) => total + fournisseur.remises.length,
     0
   );
 
-  const totalPromotions = fournisseurs.reduce(
+  const totalPromotions = liste.reduce(
     (total, fournisseur) => total + fournisseur.promotions.length,
     0
   );
+
+  const apresEnregistrement = (enregistre) => {
+    setFournisseurs((prev) => {
+      const autres = (prev || []).filter((f) => f.id !== enregistre.id);
+      return [...autres, enregistre].sort((a, b) => a.nom.localeCompare(b.nom));
+    });
+    setEnEdition(null);
+  };
+
+  const apresSuppression = (id) => {
+    setFournisseurs((prev) => (prev || []).filter((f) => f.id !== id));
+    setEnEdition(null);
+  };
 
   return (
     <div className="remises-page">
@@ -1222,7 +947,7 @@ export default function RemisesFournisseurs() {
 
       <section className="remises-stats" aria-label="Résumé des offres">
         <div className="remises-stat">
-          <div className="remises-stat-value">{fournisseurs.length}</div>
+          <div className="remises-stat-value">{liste.length}</div>
           <div className="remises-stat-label">Fournisseurs référencés</div>
         </div>
         <div className="remises-stat">
@@ -1235,25 +960,62 @@ export default function RemisesFournisseurs() {
         </div>
       </section>
 
-      {fournisseursFiltres.length > 0 ? (
+      <div className="remises-toolbar">
+        <button
+          type="button"
+          className="remise-btn remise-btn-primary"
+          onClick={() => setEnEdition("nouveau")}
+          disabled={!fournisseurs}
+        >
+          + Ajouter un fournisseur
+        </button>
+      </div>
+
+      {erreur && <div className="remise-empty">{erreur}</div>}
+      {!erreur && !fournisseurs && <div className="remise-empty">Chargement…</div>}
+
+      {enEdition === "nouveau" && (
         <section className="remises-grid">
-          {fournisseursFiltres.map((fournisseur) => (
-            <FournisseurCard
-              fournisseur={fournisseur}
-              key={fournisseur.nom}
-            />
-          ))}
+          <FournisseurForm
+            fournisseur={fournisseurVide()}
+            onCancel={() => setEnEdition(null)}
+            onSaved={apresEnregistrement}
+            onDeleted={apresSuppression}
+          />
+        </section>
+      )}
+
+      {fournisseurs && (fournisseursFiltres.length > 0 ? (
+        <section className="remises-grid">
+          {fournisseursFiltres.map((fournisseur) =>
+            enEdition === fournisseur.id ? (
+              <FournisseurForm
+                fournisseur={fournisseur}
+                key={fournisseur.id}
+                onCancel={() => setEnEdition(null)}
+                onSaved={apresEnregistrement}
+                onDeleted={apresSuppression}
+              />
+            ) : (
+              <FournisseurCard
+                fournisseur={fournisseur}
+                key={fournisseur.id}
+                onEdit={() => setEnEdition(fournisseur.id)}
+              />
+            )
+          )}
         </section>
       ) : (
         <div className="remise-empty">
           Aucun fournisseur ou produit ne correspond à « {recherche} ».
         </div>
-      )}
+      ))}
 
       <p className="remise-disclaimer">
         Données issues du dépliant PROFERM « Les amis du réseau – Temps forts
-        2026 ». Lorsque le dépliant renvoie vers un tarif ou un détail d’offre
-        complémentaire, celui-ci est indiqué comme étant à consulter.
+        2026 », modifiables par l'équipe. Lorsque le dépliant renvoie vers un
+        tarif ou un détail d’offre complémentaire, celui-ci est indiqué comme
+        étant à consulter.
       </p>
     </div>
   );
