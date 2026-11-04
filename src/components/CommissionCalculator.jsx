@@ -10,6 +10,9 @@ const API_BASE = import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'ph
 
 const TAUX_CHARGES = 0.2155;
 
+// Fourniture seule : la commission est de 10 % de la marge (vente HT – achat HT).
+const TAUX_FOURNITURE = 0.10;
+
 const MOIS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 
 const fmt = (n) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 2 }).format(n || 0);
@@ -44,6 +47,8 @@ const emptyVente = () => ({ id: uid(), type: 'vente', client: '', note: '', vent
 
 const emptyMetre = () => ({ id: uid(), type: 'metre', client: '', note: '', venteHT: '' });
 
+const emptyFourniture = () => ({ id: uid(), client: '', note: '', venteHT: '', achatHT: '' });
+
 const emptyDecom = () => ({ id: uid(), client: '', note: '', montant: '' });
 
 const emptyFrais = () => ({ id: uid(), description: '', montant: '' });
@@ -74,7 +79,9 @@ const CommissionCalculator = ({ user, targetUserId = null }) => {
 
     const [ventes, setVentes] = useState([emptyVente()]);
 
-    const [decoms, setDecoms] = useState([]);
+    const [fournitures, setFournitures] = useState([]);
+
+    const [decoms, setDecoms] = useState([]);
 
     const [frais, setFrais]   = useState([]);
 
@@ -178,11 +185,20 @@ const CommissionCalculator = ({ user, targetUserId = null }) => {
 
 
 
-    const totals = useMemo(() => {
+    const computedFournitures = useMemo(() => fournitures.map(f => {
+        const marge = (parseFloat(f.venteHT) || 0) - (parseFloat(f.achatHT) || 0);
+        return { ...f, marge, commission: Math.max(marge, 0) * TAUX_FOURNITURE };
+    }), [fournitures]);
+
+
+
+    const totals = useMemo(() => {
 
         const totalCA    = computedVentes.reduce((s, v) => s + (parseFloat(v.venteHT) || 0), 0);
 
-        const totalCom   = computedVentes.reduce((s, v) => s + v.commission, 0);
+        const totalCom   = computedVentes.reduce((s, v) => s + v.commission, 0);
+
+        const totalFourniture = computedFournitures.reduce((s, f) => s + f.commission, 0);
 
         const totalDecom = decoms.reduce((s, d) => s + (parseFloat(d.montant) || 0), 0);
 
@@ -191,13 +207,13 @@ const CommissionCalculator = ({ user, targetUserId = null }) => {
         // Prime de palier : un seul palier, le plus élevé atteint, ajoutée à la commission.
         const prime = getPrimePalier(totalCA);
 
-        const brut       = Math.max(totalCom + prime - totalDecom, 0);
+        const brut       = Math.max(totalCom + totalFourniture + prime - totalDecom, 0);
 
         const charges    = brut * TAUX_CHARGES;
 
-        return { totalCA, totalCom, totalDecom, totalFrais, prime, charges, net: brut - charges + totalFrais };
+        return { totalCA, totalCom, totalFourniture, totalDecom, totalFrais, prime, charges, net: brut - charges + totalFrais };
 
-    }, [computedVentes, decoms, frais]);
+    }, [computedVentes, computedFournitures, decoms, frais]);
 
 
 
@@ -209,7 +225,11 @@ const CommissionCalculator = ({ user, targetUserId = null }) => {
 
     const removeVente = (id) => setVentes(vs => vs.filter(v => v.id !== id));
 
-    const updateDecom = (id, field, val) => setDecoms(ds => ds.map(d => d.id === id ? { ...d, [field]: val } : d));
+    const updateFourniture = (id, field, val) => setFournitures(fs => fs.map(f => f.id === id ? { ...f, [field]: val } : f));
+
+    const removeFourniture = (id) => setFournitures(fs => fs.filter(f => f.id !== id));
+
+    const updateDecom = (id, field, val) => setDecoms(ds => ds.map(d => d.id === id ? { ...d, [field]: val } : d));
 
     const removeDecom = (id) => setDecoms(ds => ds.filter(d => d.id !== id));
 
@@ -239,7 +259,7 @@ const CommissionCalculator = ({ user, targetUserId = null }) => {
 
                 credentials: 'include',
 
-                body: JSON.stringify({ user_id: userId, commercial_name: userName, month, year, data: { ventes, decoms, frais } }),
+                body: JSON.stringify({ user_id: userId, commercial_name: userName, month, year, data: { ventes, fournitures, decoms, frais } }),
 
             });
 
@@ -267,7 +287,9 @@ const CommissionCalculator = ({ user, targetUserId = null }) => {
 
         setVentes((d.ventes || [emptyVente()]).map(v => ({ ...v, id: uid() })));
 
-        setDecoms((d.decoms || []).map(x => ({ ...x, id: uid() })));
+        setFournitures((d.fournitures || []).map(x => ({ ...x, id: uid() })));
+
+        setDecoms((d.decoms || []).map(x => ({ ...x, id: uid() })));
 
         setFrais((d.frais  || []).map(x => ({ ...x, id: uid() })));
 
@@ -645,7 +667,75 @@ const CommissionCalculator = ({ user, targetUserId = null }) => {
 
 
 
-            {/* ── Table Décommissionnements ── */}
+            {/* ── Table Fourniture seule ── */}
+
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100 flex flex-wrap items-baseline justify-between gap-2">
+                    <span className="text-sm font-semibold text-gray-800">Fourniture seule</span>
+                    <span className="text-xs text-gray-400">Marge = vente HT – achat HT · commission = 10 % de la marge</span>
+                </div>
+                {computedFournitures.length > 0 && (
+                    <div className="overflow-x-auto">
+                        <table className="w-full min-w-[680px]">
+                            <thead>
+                                <tr>
+                                    <th className={thCls}>Client / Projet</th>
+                                    <th className={thCls}>Note</th>
+                                    <th className={thCls}>Vente HT (€)</th>
+                                    <th className={thCls}>Achat HT (€)</th>
+                                    <th className={thCls}>Marge</th>
+                                    <th className={thCls}>Commission (10 %)</th>
+                                    <th className={thCls + ' w-10'}></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {computedFournitures.map(f => (
+                                    <tr key={f.id} className="border-t border-gray-50 hover:bg-gray-50/50">
+                                        <td className="px-2 py-1.5">
+                                            <input className={inputCls} placeholder="Client / Projet" value={f.client}
+                                                onChange={e => updateFourniture(f.id, 'client', e.target.value)} />
+                                        </td>
+                                        <td className="px-2 py-1.5">
+                                            <input className={inputCls} placeholder="Note (optionnel)" value={f.note}
+                                                onChange={e => updateFourniture(f.id, 'note', e.target.value)} />
+                                        </td>
+                                        <td className="px-2 py-1.5">
+                                            <input className={inputCls} type="number" step="0.01" min="0" placeholder="0,00"
+                                                value={f.venteHT} onChange={e => updateFourniture(f.id, 'venteHT', e.target.value)} />
+                                        </td>
+                                        <td className="px-2 py-1.5">
+                                            <input className={inputCls} type="number" step="0.01" min="0" placeholder="0,00"
+                                                value={f.achatHT} onChange={e => updateFourniture(f.id, 'achatHT', e.target.value)} />
+                                        </td>
+                                        <td className={`px-3 py-1.5 text-right text-xs font-semibold whitespace-nowrap ${f.marge < 0 ? 'text-red-500' : 'text-gray-700'}`}>
+                                            {fmt(f.marge)}
+                                        </td>
+                                        <td className="px-3 py-1.5 text-right text-sm font-bold text-gray-800 whitespace-nowrap">
+                                            {fmt(f.commission)}
+                                        </td>
+                                        <td className="px-2 py-1.5">
+                                            <button onClick={() => removeFourniture(f.id)}
+                                                className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+                <div className="px-5 py-3 border-t border-gray-50">
+                    <button onClick={() => setFournitures(fs => [...fs, emptyFourniture()])}
+                        className="flex items-center gap-2 text-sm font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-xl transition-colors">
+                        <Plus size={14} /> Ajouter une fourniture seule
+                    </button>
+                </div>
+            </div>
+
+
+
+            {/* ── Table Décommissionnements ── */}
 
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
 
@@ -843,7 +933,9 @@ const CommissionCalculator = ({ user, targetUserId = null }) => {
 
                         { label: "Chiffre d'affaires",       value: fmt(totals.totalCA),    extra: '' },
 
-                        { label: 'Total commissions',        value: fmt(totals.totalCom),   extra: '' },
+                        { label: 'Total commissions',        value: fmt(totals.totalCom),   extra: '' },
+
+                        { label: 'Commissions fourniture seule', value: fmt(totals.totalFourniture), extra: '' },
 
                         { label: 'Prime de chiffre d’affaires',
 
