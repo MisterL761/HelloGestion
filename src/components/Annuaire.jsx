@@ -1,14 +1,94 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Skeleton from './Skeleton';
+import { useToast, useConfirm } from './ToastProvider';
 import {
     Phone, Plus, Trash2, ChevronDown, ChevronUp,
-    Search, Pencil, Check, X, Book, Mail, Printer
+    Search, Pencil, Check, X, Book, Mail, Printer, History
 } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'php';
 
-const Annuaire = ({ user }) => {
-    const isAdmin = user?.role === 'admin';
+const fmtDateTime = (s) => new Date(s.replace(' ', 'T')).toLocaleString('fr-FR', {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+});
+
+// Journal des suppressions : visible uniquement par les comptes autorisés côté serveur
+const DeletionLogs = ({ onClose }) => {
+    const [logs, setLogs]       = useState(null);
+    const [error, setError]     = useState(null);
+    const [openId, setOpenId]   = useState(null);
+
+    useEffect(() => {
+        fetch(`${API_BASE}/annuaire.php?logs=1`, { credentials: 'include' })
+            .then(r => r.json())
+            .then(data => data.success ? setLogs(data.logs) : setError(data.message || 'Accès refusé.'))
+            .catch(() => setError('Erreur réseau.'));
+    }, []);
+
+    return (
+        <div className="bg-white rounded-2xl shadow-sm p-4 md:p-6 border border-amber-100">
+            <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                    <History size={16} className="text-[#FFB103]" /> Journal des suppressions
+                </h3>
+                <button onClick={onClose} className="text-gray-400 hover:text-gray-600" title="Fermer">
+                    <X size={16} />
+                </button>
+            </div>
+
+            {error && <p className="text-sm text-red-600">{error}</p>}
+            {!error && !logs && <p className="text-sm text-gray-400">Chargement…</p>}
+            {logs && logs.length === 0 && <p className="text-sm text-gray-400">Aucune suppression pour l'instant.</p>}
+
+            {logs && logs.length > 0 && (
+                <ul className="divide-y divide-gray-100">
+                    {logs.map(log => (
+                        <li key={log.id} className="py-2">
+                            <button
+                                onClick={() => setOpenId(prev => prev === log.id ? null : log.id)}
+                                className="w-full text-left flex flex-wrap items-baseline gap-x-2 text-sm"
+                            >
+                                <span className="text-xs text-gray-400 whitespace-nowrap">{fmtDateTime(log.created_at)}</span>
+                                <span className="font-semibold text-gray-900">{log.user_name || 'Inconnu'}</span>
+                                <span className="text-gray-500">a supprimé</span>
+                                {log.type === 'supplier' ? (
+                                    <span>le fournisseur <strong>{log.cible}</strong>
+                                        {log.details.contacts?.length > 0 && ` (et ${log.details.contacts.length} contact${log.details.contacts.length > 1 ? 's' : ''})`}
+                                    </span>
+                                ) : (
+                                    <span>le contact <strong>{log.cible}</strong> de {log.details.fournisseur}</span>
+                                )}
+                            </button>
+
+                            {openId === log.id && (
+                                <div className="mt-2 ml-2 pl-3 border-l-2 border-amber-100 text-xs text-gray-600 space-y-1">
+                                    {log.type === 'supplier' ? (
+                                        <>
+                                            {log.details.order_url && <p>Lien de commande : {log.details.order_url}</p>}
+                                            {(log.details.contacts || []).map((c, i) => (
+                                                <p key={i}>{[c.label, c.numero, c.email, c.fax && `Fixe : ${c.fax}`].filter(Boolean).join(' · ')}</p>
+                                            ))}
+                                            {!log.details.order_url && !log.details.contacts?.length && <p>Aucun contact.</p>}
+                                        </>
+                                    ) : (
+                                        <p>{[log.details.numero, log.details.email, log.details.fax && `Fixe : ${log.details.fax}`].filter(Boolean).join(' · ')}</p>
+                                    )}
+                                </div>
+                            )}
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </div>
+    );
+};
+
+const Annuaire = () => {
+    const toast   = useToast();
+    const confirm = useConfirm();
+
+    const [canViewLogs, setCanViewLogs]     = useState(false);
+    const [showLogs, setShowLogs]           = useState(false);
 
     const [suppliers, setSuppliers]         = useState([]);
     const [loading, setLoading]             = useState(true);
@@ -48,6 +128,7 @@ const Annuaire = ({ user }) => {
             const data = await res.json();
             if (data.success) {
                 setSuppliers(data.suppliers || []);
+                setCanViewLogs(Boolean(data.can_view_logs));
             } else {
                 setError('Impossible de charger l\'annuaire.');
             }
@@ -101,17 +182,31 @@ const Annuaire = ({ user }) => {
     // ── Delete supplier ───────────────────────────────────
 
     const handleDeleteSupplier = async (id) => {
-        if (!window.confirm('Supprimer ce fournisseur et tous ses numéros ?')) return;
+        const supplier = suppliers.find(s => s.id === id);
+        const nbContacts = supplier?.phones.length ?? 0;
+        const ok = await confirm(
+            `Supprimer le fournisseur « ${supplier?.name ?? ''} »`
+            + (nbContacts > 0 ? ` et ses ${nbContacts} contact${nbContacts > 1 ? 's' : ''} ?` : ' ?')
+        );
+        if (!ok) return;
         try {
-            await fetch(`${API_BASE}/annuaire.php`, {
+            const res = await fetch(`${API_BASE}/annuaire.php`, {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
                 body: JSON.stringify({ type: 'supplier', id }),
             });
+            const data = await res.json();
+            if (!data.success) {
+                toast.error(data.message || 'Suppression impossible.');
+                return;
+            }
             setSuppliers(prev => prev.filter(s => s.id !== id));
             if (expandedId === id) setExpandedId(null);
-        } catch { /* ignore */ }
+            toast.success(`Fournisseur « ${supplier?.name ?? ''} » supprimé`);
+        } catch {
+            toast.error('Suppression impossible (erreur réseau).');
+        }
     };
 
     // ── Edit supplier ─────────────────────────────────────
@@ -182,20 +277,30 @@ const Annuaire = ({ user }) => {
     // ── Delete phone ──────────────────────────────────────
 
     const handleDeletePhone = async (supplierId, phoneId) => {
-        if (!window.confirm('Supprimer ce numéro ?')) return;
+        const phone = suppliers.find(s => s.id === supplierId)?.phones.find(p => p.id === phoneId);
+        const contactName = phone?.label || phone?.numero || '';
+        if (!await confirm(`Supprimer le contact « ${contactName} » ?`)) return;
         try {
-            await fetch(`${API_BASE}/annuaire.php`, {
+            const res = await fetch(`${API_BASE}/annuaire.php`, {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
                 body: JSON.stringify({ type: 'phone', id: phoneId }),
             });
+            const data = await res.json();
+            if (!data.success) {
+                toast.error(data.message || 'Suppression impossible.');
+                return;
+            }
             setSuppliers(prev => prev.map(s =>
                 s.id === supplierId
                     ? { ...s, phones: s.phones.filter(p => p.id !== phoneId) }
                     : s
             ));
-        } catch { /* ignore */ }
+            toast.success(`Contact « ${contactName} » supprimé`);
+        } catch {
+            toast.error('Suppression impossible (erreur réseau).');
+        }
     };
 
     // ── Edit phone ────────────────────────────────────────
@@ -279,14 +384,28 @@ const Annuaire = ({ user }) => {
                         <p className="text-sm text-gray-500">{suppliers.length} fournisseur{suppliers.length !== 1 ? 's' : ''}</p>
                     </div>
                 </div>
-                <button
-                    onClick={() => { setShowAddSupplier(true); setNewSupplierName(''); }}
-                    className="flex items-center gap-2 bg-[#FFB103] text-[#1a1a1a] rounded-xl px-4 py-2 text-sm font-medium hover:bg-[#d49400] transition-colors"
-                >
-                    <Plus size={16} />
-                    Ajouter un fournisseur
-                </button>
+                <div className="flex items-center gap-2">
+                    {canViewLogs && (
+                        <button
+                            onClick={() => setShowLogs(v => !v)}
+                            className="flex items-center gap-2 border border-gray-200 bg-white text-gray-700 rounded-xl px-3 py-2 text-sm font-medium hover:bg-gray-50 transition-colors"
+                            title="Voir qui a supprimé quoi"
+                        >
+                            <History size={16} />
+                            Journal
+                        </button>
+                    )}
+                    <button
+                        onClick={() => { setShowAddSupplier(true); setNewSupplierName(''); }}
+                        className="flex items-center gap-2 bg-[#FFB103] text-[#1a1a1a] rounded-xl px-4 py-2 text-sm font-medium hover:bg-[#d49400] transition-colors"
+                    >
+                        <Plus size={16} />
+                        Ajouter un fournisseur
+                    </button>
+                </div>
             </div>
+
+            {canViewLogs && showLogs && <DeletionLogs onClose={() => setShowLogs(false)} />}
 
             {/* Add supplier form */}
             {showAddSupplier && (
@@ -358,7 +477,7 @@ const Annuaire = ({ user }) => {
                                 </div>
 
                                 {/* Supplier name (or edit field) */}
-                                {isAdmin && editSupplierId === supplier.id ? (
+                                {editSupplierId === supplier.id ? (
                                     <div
                                         className="flex-1 flex items-center gap-2"
                                         onClick={e => e.stopPropagation()}
@@ -399,8 +518,8 @@ const Annuaire = ({ user }) => {
                                     </div>
                                 )}
 
-                                {/* Admin actions */}
-                                {isAdmin && editSupplierId !== supplier.id && (
+                                {/* Actions fournisseur (tous les utilisateurs) */}
+                                {editSupplierId !== supplier.id && (
                                     <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
                                         <button
                                             onClick={() => startEditSupplier(supplier)}

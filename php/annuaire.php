@@ -68,6 +68,41 @@ try {
     // Colonne déjà existante, on ignore
 }
 
+// Journal des suppressions (qui a supprimé quoi), consultable uniquement par ANNUAIRE_LOGS_VIEWERS
+$pdo->exec("
+    CREATE TABLE IF NOT EXISTS `annulaire_suppressions` (
+        `id`         INT          NOT NULL AUTO_INCREMENT,
+        `user_id`    INT          NOT NULL,
+        `user_name`  VARCHAR(150) NOT NULL DEFAULT '',
+        `type`       VARCHAR(20)  NOT NULL,
+        `cible`      VARCHAR(255) NOT NULL DEFAULT '',
+        `details`    TEXT         NULL,
+        `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        KEY `idx_created` (`created_at`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+");
+
+// E-mails des comptes autorisés à voir le journal (surchargeable dans config.php)
+const ANNUAIRE_LOGS_VIEWERS_DEFAULT = ['lotfi.ksantinipro@gmail.com'];
+
+function annuaireCanViewLogs(): bool {
+    $viewers = defined('ANNUAIRE_LOGS_VIEWERS') ? ANNUAIRE_LOGS_VIEWERS : ANNUAIRE_LOGS_VIEWERS_DEFAULT;
+    $email = strtolower(trim((string) ($_SESSION['user']['email'] ?? '')));
+    return $email !== '' && in_array($email, array_map('strtolower', $viewers), true);
+}
+
+function annuaireLogSuppression(PDO $pdo, string $type, string $cible, array $details): void {
+    $pdo->prepare('INSERT INTO annulaire_suppressions (user_id, user_name, type, cible, details) VALUES (?, ?, ?, ?, ?)')
+        ->execute([
+            (int) ($_SESSION['user']['id'] ?? 0),
+            (string) ($_SESSION['user']['name'] ?? ''),
+            $type,
+            mb_substr($cible, 0, 255),
+            json_encode($details, JSON_UNESCAPED_UNICODE),
+        ]);
+}
+
 $count = (int) $pdo->query('SELECT COUNT(*) FROM annulaire_fournisseurs')->fetchColumn();
 if ($count === 0) {
     $defaults = ['Proferm', 'Cetal', 'Somfy', 'Euradif', 'SDA', 'Hormann', 'Filtersun', 'Volpro', 'Voltech', 'Marquise', 'Serge Ferrari'];
@@ -78,6 +113,24 @@ if ($count === 0) {
 }
 
 $method = $_SERVER['REQUEST_METHOD'];
+
+if ($method === 'GET' && isset($_GET['logs'])) {
+    if (!annuaireCanViewLogs()) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Accès refusé.']);
+        exit();
+    }
+    $logs = $pdo->query(
+        'SELECT id, user_name, type, cible, details, created_at FROM annulaire_suppressions ORDER BY created_at DESC, id DESC LIMIT 200'
+    )->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($logs as &$log) {
+        $log['id'] = (int) $log['id'];
+        $log['details'] = json_decode((string) $log['details'], true) ?: [];
+    }
+    unset($log);
+    echo json_encode(['success' => true, 'logs' => $logs], JSON_UNESCAPED_UNICODE);
+    exit();
+}
 
 if ($method === 'GET') {
     $fournisseurs = $pdo->query(
@@ -112,7 +165,7 @@ if ($method === 'GET') {
         ];
     }
 
-    echo json_encode(['success' => true, 'suppliers' => $result], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['success' => true, 'suppliers' => $result, 'can_view_logs' => annuaireCanViewLogs()], JSON_UNESCAPED_UNICODE);
     exit();
 }
 
@@ -205,12 +258,7 @@ if ($method === 'PUT') {
     }
 
     if ($type === 'supplier') {
-        // Keep admin-only for supplier edit
-        if (($_SESSION['user']['role'] ?? '') !== 'admin') {
-            http_response_code(403);
-            echo json_encode(['success' => false, 'message' => 'Accès réservé aux administrateurs.']);
-            exit();
-        }
+        // Tous les utilisateurs connectés peuvent renommer un fournisseur
         $nom = trim($body['name'] ?? '');
         if (empty($nom)) {
             http_response_code(400);
@@ -266,32 +314,58 @@ if ($method === 'DELETE') {
         exit();
     }
 
+    // Tous les utilisateurs connectés peuvent supprimer ; chaque suppression est journalisée
+    // avec le contenu supprimé, pour pouvoir le retrouver.
     if ($type === 'supplier') {
-        if (($_SESSION['user']['role'] ?? '') !== 'admin') {
-            http_response_code(403);
-            echo json_encode(['success' => false, 'message' => 'Accès réservé aux administrateurs.']);
-            exit();
-        }
-        $stmt = $pdo->prepare('DELETE FROM annulaire_fournisseurs WHERE id = ?');
-        $stmt->execute([$id]);
-        if ($stmt->rowCount() === 0) {
+        $check = $pdo->prepare('SELECT nom, order_url FROM annulaire_fournisseurs WHERE id = ?');
+        $check->execute([$id]);
+        $fournisseur = $check->fetch(PDO::FETCH_ASSOC);
+        if (!$fournisseur) {
             http_response_code(404);
             echo json_encode(['success' => false, 'message' => 'Fournisseur introuvable.']);
             exit();
         }
+        // Les contacts sont supprimés avec le fournisseur (ON DELETE CASCADE) : on les garde dans le journal
+        $contacts = $pdo->prepare('SELECT label, numero, email, fax FROM annulaire_numeros WHERE fournisseur_id = ? ORDER BY created_at ASC');
+        $contacts->execute([$id]);
+
+        $pdo->beginTransaction();
+        $pdo->prepare('DELETE FROM annulaire_fournisseurs WHERE id = ?')->execute([$id]);
+        annuaireLogSuppression($pdo, 'supplier', $fournisseur['nom'], [
+            'order_url' => $fournisseur['order_url'],
+            'contacts'  => $contacts->fetchAll(PDO::FETCH_ASSOC),
+        ]);
+        $pdo->commit();
+
         echo json_encode(['success' => true]);
         exit();
     }
 
     if ($type === 'phone') {
-
-        $stmt = $pdo->prepare('DELETE FROM annulaire_numeros WHERE id = ?');
-        $stmt->execute([$id]);
-        if ($stmt->rowCount() === 0) {
+        $check = $pdo->prepare('
+            SELECT n.label, n.numero, n.email, n.fax, f.nom AS fournisseur
+            FROM annulaire_numeros n
+            JOIN annulaire_fournisseurs f ON f.id = n.fournisseur_id
+            WHERE n.id = ?
+        ');
+        $check->execute([$id]);
+        $contact = $check->fetch(PDO::FETCH_ASSOC);
+        if (!$contact) {
             http_response_code(404);
             echo json_encode(['success' => false, 'message' => 'Numéro introuvable.']);
             exit();
         }
+
+        $pdo->beginTransaction();
+        $pdo->prepare('DELETE FROM annulaire_numeros WHERE id = ?')->execute([$id]);
+        annuaireLogSuppression($pdo, 'phone', $contact['label'] !== '' ? $contact['label'] : $contact['numero'], [
+            'fournisseur' => $contact['fournisseur'],
+            'numero'      => $contact['numero'],
+            'email'       => $contact['email'],
+            'fax'         => $contact['fax'],
+        ]);
+        $pdo->commit();
+
         echo json_encode(['success' => true]);
         exit();
     }
