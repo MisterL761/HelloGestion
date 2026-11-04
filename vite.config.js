@@ -36,6 +36,34 @@ function adaptPublicFilesToBase(base, outDir) {
   };
 }
 
+const UPLOAD_TYPES = {
+  '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp',
+  '.gif': 'image/gif', '.svg': 'image/svg+xml', '.pdf': 'application/pdf',
+};
+
+// En local, les fichiers envoyés (php/uploads) sont lus directement sur le disque :
+// le proxy vers Apache coupait les réponses volumineuses (photos de plus de ~650 Ko
+// incomplètes, donc jamais affichées). Les scripts PHP passent toujours par le proxy.
+function servePhpUploads() {
+  const uploadsDir = path.resolve('php/uploads');
+  return {
+    name: 'serve-php-uploads',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use(`${PROD_BASE}php/uploads`, (req, res, next) => {
+        const file = path.resolve(uploadsDir, '.' + decodeURIComponent(req.url.split('?')[0]));
+        // Uniquement des fichiers existants à l'intérieur de php/uploads
+        if (!file.startsWith(uploadsDir + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) {
+          return next();
+        }
+        res.setHeader('Content-Type', UPLOAD_TYPES[path.extname(file).toLowerCase()] || 'application/octet-stream');
+        res.setHeader('Content-Length', fs.statSync(file).size);
+        fs.createReadStream(file).pipe(res);
+      });
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   const isDev = mode === 'development';
   const env = loadEnv(mode, process.cwd(), '');
@@ -43,7 +71,7 @@ export default defineConfig(({ mode }) => {
   const outDir = env.VITE_OUT_DIR || 'dist';
 
   return {
-    plugins: [react(), adaptPublicFilesToBase(base, outDir)],
+    plugins: [react(), adaptPublicFilesToBase(base, outDir), servePhpUploads()],
 
     base,
 
@@ -56,7 +84,9 @@ export default defineConfig(({ mode }) => {
       proxy: isDev
         ? {
             '/hello-gestion/php': {
-              target: 'http://localhost',
+              // 127.0.0.1 et non localhost : avec localhost, le proxy coupait
+              // les réponses volumineuses (photos de plus de ~650 Ko jamais affichées)
+              target: 'http://127.0.0.1',
               changeOrigin: true,
               secure: false,
             },
