@@ -50,14 +50,22 @@ function remiseNormaliser(array $f): array {
         if ($p['titre'] !== '' || $p['produit'] !== '' || $p['conditions'] !== '' || $dates) $promotions[] = $p;
     }
 
+    // Plusieurs contacts par fournisseur ; l'ancien format (un seul contact) est converti
+    $sourceContacts = is_array($f['contacts'] ?? null)
+        ? $f['contacts']
+        : [['nom' => $f['contact'] ?? '', 'email' => $f['email'] ?? '', 'telephone' => $f['telephone'] ?? '']];
+    $contacts = [];
+    foreach ($sourceContacts as $c) {
+        $c = ['nom' => $txt($c['nom'] ?? ''), 'email' => $txt($c['email'] ?? ''), 'telephone' => $txt($c['telephone'] ?? '')];
+        if ($c['nom'] !== '' || $c['email'] !== '' || $c['telephone'] !== '') $contacts[] = $c;
+    }
+
     return [
         'nom'        => $txt($f['nom'] ?? ''),
         'categorie'  => $txt($f['categorie'] ?? ''),
         'remises'    => $remises,
         'promotions' => $promotions,
-        'contact'    => $txt($f['contact'] ?? ''),
-        'email'      => $txt($f['email'] ?? ''),
-        'telephone'  => $txt($f['telephone'] ?? ''),
+        'contacts'   => $contacts,
     ];
 }
 
@@ -84,7 +92,8 @@ $method = $_SERVER['REQUEST_METHOD'];
 if ($method === 'GET') {
     $rows = $pdo->query('SELECT id, data, updated_by, updated_at FROM remises_fournisseurs ORDER BY nom ASC')
         ->fetchAll(PDO::FETCH_ASSOC);
-    $fournisseurs = array_map(fn($r) => ['id' => (int) $r['id']] + (json_decode($r['data'], true) ?: []) + [
+    // remiseNormaliser à la lecture : convertit aussi les fiches enregistrées avant les contacts multiples
+    $fournisseurs = array_map(fn($r) => ['id' => (int) $r['id']] + remiseNormaliser(json_decode($r['data'], true) ?: []) + [
         'updated_by' => $r['updated_by'],
         'updated_at' => $r['updated_at'],
     ], $rows);
@@ -113,8 +122,9 @@ if ($method === 'POST') {
         }
     }
 
-    $id = remiseEnregistrer($pdo, $id ?: null, $f, (string) ($_SESSION['user']['name'] ?? ''));
-    echo json_encode(['success' => true, 'fournisseur' => ['id' => $id] + $f], JSON_UNESCAPED_UNICODE);
+    $auteur = (string) ($_SESSION['user']['name'] ?? '');
+    $id = remiseEnregistrer($pdo, $id ?: null, $f, $auteur);
+    echo json_encode(['success' => true, 'fournisseur' => ['id' => $id] + $f + ['updated_by' => $auteur]], JSON_UNESCAPED_UNICODE);
     exit();
 }
 
