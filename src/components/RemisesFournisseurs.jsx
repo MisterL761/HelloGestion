@@ -97,6 +97,8 @@ const styles = `
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+  /* Chaque carte garde sa hauteur : dérouler une carte n'étire pas sa voisine */
+  align-items: start;
 }
 .remise-card {
   background: white;
