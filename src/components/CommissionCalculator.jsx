@@ -141,9 +141,11 @@ const CommissionCalculator = ({ user, targetUserId = null }) => {
 
 
 
-    const totalCAForRules = useMemo(
-        () => ventes.reduce((sum, v) => sum + (parseFloat(v.venteHT) || 0), 0),
-        [ventes]
+    // Le chiffre d'affaires regroupe les ventes et la fourniture seule
+    // (paliers de prime et règle des 3 % au-delà de 100 000 €).
+    const totalCAForRules = useMemo(
+        () => [...ventes, ...fournitures].reduce((sum, v) => sum + (parseFloat(v.venteHT) || 0), 0),
+        [ventes, fournitures]
     );
 
     const computedVentes = useMemo(() => ventes.map(v => {
@@ -194,7 +196,7 @@ const CommissionCalculator = ({ user, targetUserId = null }) => {
 
     const totals = useMemo(() => {
 
-        const totalCA    = computedVentes.reduce((s, v) => s + (parseFloat(v.venteHT) || 0), 0);
+        const totalCA    = totalCAForRules;
 
         const totalCom   = computedVentes.reduce((s, v) => s + v.commission, 0);
 
@@ -213,7 +215,7 @@ const CommissionCalculator = ({ user, targetUserId = null }) => {
 
         return { totalCA, totalCom, totalFourniture, totalDecom, totalFrais, prime, charges, net: brut - charges + totalFrais };
 
-    }, [computedVentes, computedFournitures, decoms, frais]);
+    }, [totalCAForRules, computedVentes, computedFournitures, decoms, frais]);
 
 
 
