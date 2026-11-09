@@ -332,7 +332,7 @@ function CarteCommande({ c, ouverte, onToggle, onEditLigne, onAjouterLigne, onPo
                         <table className="w-full min-w-[820px] text-sm">
                             <thead className="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-500">
                                 <tr>
-                                    {['Fournisseur', 'Commandé', 'ARC', 'HT', 'Marchandise', 'Livraison', 'Durée de pose', 'État', ''].map(h => <th key={h} className="px-3 py-2 text-left font-semibold whitespace-nowrap">{h}</th>)}
+                                    {['Fournisseur', 'Commandé', 'ARC', 'N° BC', 'HT', 'Marchandise', 'Livraison', 'Durée de pose', 'État', ''].map(h => <th key={h} className="px-3 py-2 text-left font-semibold whitespace-nowrap">{h}</th>)}
                                 </tr>
                             </thead>
                             <tbody>
@@ -343,6 +343,7 @@ function CarteCommande({ c, ouverte, onToggle, onEditLigne, onAjouterLigne, onPo
                                         <td className="px-3 py-2 whitespace-nowrap">
                                             {l.date_arc ? fmtDate(l.date_arc) : <span className="text-red-600 font-semibold">{l.relance || 'Pas d\'ARC'}</span>}
                                         </td>
+                                        <td className="px-3 py-2 font-mono text-xs">{l.num_bc}</td>
                                         <td className="px-3 py-2 whitespace-nowrap">{fmtEuro(l.montant_ht)}</td>
                                         <td className="px-3 py-2">{l.type_marchandise}{l.motorisation && l.motorisation !== 'Non concerné' ? <span className="text-gray-400"> · {l.motorisation}</span> : ''}</td>
                                         <td className="px-3 py-2 whitespace-nowrap">{l.livraison ? <>{fmtDate(l.livraison)} <span className="text-gray-400 text-xs">{semaineDe(l.livraison)}</span>
@@ -428,6 +429,10 @@ function DetailsJournal({ log }) {
         if (d.bc !== null && d.bc !== undefined) resume.push(`${d.bc} BC`);
         if (d.factures !== null && d.factures !== undefined) resume.push(`${d.factures} factures`);
         if (d.bc_ajoutes) resume.push(`${d.bc_ajoutes} BC ajoutés automatiquement`);
+        const noms = { commandes: 'Commandes', bc: 'BC', factures: 'Factures' };
+        for (const [k, f] of Object.entries(d.fusion || {})) {
+            resume.push(`${noms[k] || k} : ${f.ajoutees} ajoutée(s), ${f.mises_a_jour} mise(s) à jour, ${f.conservees} gardée(s) comme sur le site, ${f.ignorees} supprimée(s) sur le site non remise(s)`);
+        }
     }
     if (log.action === 'export_facturation') resume.push(`${d.bc ?? 0} BC · ${d.factures ?? 0} factures`);
     if (log.action.startsWith('chantier_') && d.statut_archive) resume.push(`Statut : ${d.statut_archive}`);
@@ -663,18 +668,28 @@ export default function SuiviCommandes() {
                     : `« ${f.name} » : ${d.bc.length} BC, ${d.factures.length} factures`);
             }
             if (!corps.suivi && !corps.compta) return;
-            const remplace = [corps.suivi && 'les commandes', corps.compta && 'les BC et factures'].filter(Boolean).join(' et ');
-            // Ce qui sera effacé sur le site
-            const actuels = [
-                corps.suivi && data.commandes.length && `${data.commandes.length} lignes de commande`,
-                corps.compta && data.bc.length && `${data.bc.length} BC`,
-                corps.compta && data.factures.length && `${data.factures.length} factures`,
-            ].filter(Boolean);
-            const avertissement = actuels.length
-                ? `⚠️ ATTENTION : le site contient déjà ${actuels.join(', ')}.\nIls seront EFFACÉS et remplacés par le contenu du fichier : tout ce qui a été saisi ou modifié sur le site depuis le dernier import sera perdu.`
+            const dejaDesDonnees = (corps.suivi && data.commandes.length) || (corps.compta && (data.bc.length || data.factures.length));
+            const explication = dejaDesDonnees
+                ? 'Le site contient déjà des données : elles sont CONSERVÉES.\n'
+                    + '• Les lignes nouvelles du fichier sont ajoutées.\n'
+                    + '• Les lignes jamais modifiées sur Hello Gestion sont mises à jour avec le fichier.\n'
+                    + '• Tout ce qui a été saisi, modifié ou supprimé sur Hello Gestion reste tel quel.\n'
+                    + 'Rien n\'est supprimé.'
                 : 'Le site est vide : les données du fichier vont y être chargées.';
-            if (!await confirm(`Importer les fichiers Excel ?\n\n${resume.join('\n')}\n\n${avertissement}\n\nCela remplace ${remplace} du site. Les fichiers Excel ne sont pas modifiés.\n\nConfirmer l'import ?`)) return;
-            await executer(() => appeler(corps), d => `Import terminé ✓${d.bc_ajoutes ? ` — ${d.bc_ajoutes} BC du suivi ajouté(s) en compta` : ''}`);
+            if (!await confirm(`Importer les fichiers Excel ?\n\n${resume.join('\n')}\n\n${explication}\n\nLes fichiers Excel ne sont pas modifiés.\n\nConfirmer l'import ?`)) return;
+            await executer(() => appeler(corps), d => {
+                const t = Object.values(d.fusion || {}).reduce((s, f) => {
+                    for (const k in f) s[k] = (s[k] || 0) + f[k];
+                    return s;
+                }, {});
+                const parts = [
+                    t.ajoutees && `${t.ajoutees} ajoutée(s)`,
+                    t.mises_a_jour && `${t.mises_a_jour} mise(s) à jour`,
+                    t.conservees && `${t.conservees} gardée(s) comme sur le site`,
+                    d.bc_ajoutes && `${d.bc_ajoutes} BC ajouté(s) en compta`,
+                ].filter(Boolean);
+                return `Import terminé ✓ ${parts.length ? '— ' + parts.join(', ') : '— rien de nouveau'}`;
+            });
         } catch (err) {
             toast.error(err.message || 'Import impossible');
         } finally {
@@ -738,9 +753,8 @@ export default function SuiviCommandes() {
                                 </button>
                             )}
                         </div>
-                        <span className="hidden sm:block h-8 w-px bg-gray-200" />
+                        {['commandes', 'factures'].includes(onglet) && <span className="hidden sm:block h-8 w-px bg-gray-200" />}
                         {onglet === 'commandes' && <button type="button" onClick={() => setModale({ type: 'ligne', ligne: { date_commande: today } })} className={btnPrimaire}><Plus size={16} /> Nouvelle commande</button>}
-                        {onglet === 'bc' && <button type="button" onClick={() => setModale({ type: 'bc', bc: {} })} className={btnPrimaire}><Plus size={16} /> Nouveau BC</button>}
                         {onglet === 'factures' && <button type="button" onClick={() => setModale({ type: 'facture', facture: {} })} className={btnPrimaire}><Plus size={16} /> Nouvelle facture</button>}
                     </div>
                 </div>
