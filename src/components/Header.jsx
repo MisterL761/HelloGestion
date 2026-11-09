@@ -1,7 +1,7 @@
 import React from 'react';
 import { Search, X, Menu } from 'lucide-react';
 
-const Header = ({ searchTerm, onSearchChange, onMenuToggle, pageTitle }) => {
+const Header = ({ searchTerm, onSearchChange, onMenuToggle, pageTitle, droite }) => {
     return (
         <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3">
             {/* Hamburger — mobile uniquement */}
@@ -41,6 +41,9 @@ const Header = ({ searchTerm, onSearchChange, onMenuToggle, pageTitle }) => {
                     </button>
                 )}
             </div>
+
+            {/* Zone de droite (ex. badge « Accès » du développeur) */}
+            {droite}
         </header>
     );
 };
