@@ -49,6 +49,17 @@ export function vendrediSemaine(semaine, anneeDefaut) {
     return isoDate(new Date(lundiS1 + ((+m[1] - 1) * 7 + 4) * JOUR));
 }
 
+/** « 2026-11-13 » → « S46 » (semaine ISO), avec l'année si ce n'est pas l'année en cours. */
+export function semaineDe(dateIso) {
+    if (!dateIso) return '';
+    const [a, mo, j] = dateIso.slice(0, 10).split('-').map(Number);
+    const d = new Date(Date.UTC(a, mo - 1, j));
+    d.setUTCDate(d.getUTCDate() + 3 - ((d.getUTCDay() + 6) % 7)); // jeudi de la semaine
+    const anneeIso = d.getUTCFullYear();
+    const num = Math.ceil(((d - Date.UTC(anneeIso, 0, 1)) / JOUR + 1) / 7);
+    return `S${num}${anneeIso !== new Date().getFullYear() ? `/${anneeIso}` : ''}`;
+}
+
 export function dateLivraison(l) {
     if (l.date_livraison_prevue) return l.date_livraison_prevue;
     const ref = l.date_arc || l.date_commande;

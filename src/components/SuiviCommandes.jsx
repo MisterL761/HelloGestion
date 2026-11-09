@@ -1,13 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
     ClipboardCheck, Plus, Search, Upload, Pencil, Trash2, X, CalendarCheck, CheckCircle2,
-    RotateCcw, AlertTriangle, Truck, Receipt, FileSpreadsheet, ChevronDown, ChevronRight, BellRing,
+    RotateCcw, AlertTriangle, Truck, Receipt, FileSpreadsheet, ChevronDown, ChevronRight, BellRing, Download, History, RefreshCw,
 } from 'lucide-react';
 import { useToast, useConfirm } from './ToastProvider';
 import {
-    aujourdhui, fmtDate, fmtEuro, arrondi, dateLivraison, grouperCommandes, calculerBC, calculerFactures,
+    aujourdhui, fmtDate, fmtEuro, arrondi, dateLivraison, semaineDe, grouperCommandes, calculerBC, calculerFactures,
     lireClasseur, convertirClasseur, STATUTS, STATUTS_BC, STATUTS_PAIEMENT,
 } from '../utils/suiviCommandes';
+import { telechargerClasseur } from '../utils/exportExcel';
 
 const API_BASE = import.meta.env.VITE_API_BASE || import.meta.env.BASE_URL + 'php';
 const API = `${API_BASE}/suivi_commandes_api.php`;
@@ -23,6 +24,7 @@ const ONGLETS = [
     { id: 'termines', label: 'Chantiers terminés', icon: CheckCircle2, partie: 'suivi' },
     { id: 'bc', label: 'BC & compta', icon: FileSpreadsheet, partie: 'compta' },
     { id: 'factures', label: 'Factures', icon: Receipt, partie: 'compta' },
+    { id: 'journal', label: 'Journal', icon: History, partie: 'logs' },
 ];
 
 /* =========================================================
@@ -139,8 +141,11 @@ function LigneForm({ initial, parametres, onSave, onDelete, onClose }) {
                 <div className="rounded-xl bg-gray-50 p-4">
                     <p className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-3">Livraison</p>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-                        <Champ label="Semaine prévue (S45 ou S1/2027)"><input className={inputCls} placeholder="S45" value={l.semaine_livraison} onChange={e => set('semaine_livraison', e.target.value.toUpperCase())} /></Champ>
-                        <Champ label="Ou date exacte (prioritaire)"><input type="date" className={inputCls} value={l.date_livraison_prevue || ''} onChange={e => set('date_livraison_prevue', e.target.value)} /></Champ>
+                        {/* L'un ou l'autre : saisir une semaine efface la date exacte, et inversement */}
+                        <Champ label="Semaine prévue (S45 ou S1/2027)"><input className={inputCls} placeholder="S45" value={l.semaine_livraison}
+                            onChange={e => setL(p => ({ ...p, semaine_livraison: e.target.value.toUpperCase(), date_livraison_prevue: '' }))} /></Champ>
+                        <Champ label="Ou date exacte"><input type="date" className={inputCls} value={l.date_livraison_prevue || ''}
+                            onChange={e => setL(p => ({ ...p, date_livraison_prevue: e.target.value, semaine_livraison: e.target.value ? '' : p.semaine_livraison }))} /></Champ>
                         <div className="text-sm pb-2">
                             <span className="text-gray-500">Livraison calculée : </span>
                             <strong className="text-gray-900">{livraison ? fmtDate(livraison) : '—'}</strong>
@@ -304,8 +309,12 @@ function CarteCommande({ c, ouverte, onToggle, onEditLigne, onAjouterLigne, onPo
                     </div>
                     <div className="text-xs text-gray-500 mt-0.5 truncate">{c.fournisseurs.join(' · ')}</div>
                 </div>
-                <div className="flex gap-5 text-xs">
-                    <div><div className="text-gray-400">Dernière livraison</div><div className="font-bold text-gray-800">{fmtDate(c.derniereLivraison) || '—'}</div></div>
+                <div className="flex items-center gap-5 text-xs">
+                    <div className={`rounded-xl border px-3 py-1.5 text-center ${c.derniereLivraison ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'}`}>
+                        <div className="text-[10px] uppercase tracking-wide text-gray-500">Livraison</div>
+                        <div className={`text-lg font-extrabold leading-tight ${c.derniereLivraison ? 'text-blue-700' : 'text-gray-400'}`}>{semaineDe(c.derniereLivraison) || '—'}</div>
+                        <div className="text-[11px] text-gray-500">{fmtDate(c.derniereLivraison) || 'non connue'}</div>
+                    </div>
                     <div><div className="text-gray-400">Pose</div><div className="font-bold text-gray-800">{fmtDate(c.datePose) || '—'}</div></div>
                 </div>
             </div>
@@ -330,7 +339,10 @@ function CarteCommande({ c, ouverte, onToggle, onEditLigne, onAjouterLigne, onPo
                                         <td className="px-3 py-2 font-mono text-xs">{l.num_bc}</td>
                                         <td className="px-3 py-2 whitespace-nowrap">{fmtEuro(l.montant_ht)}</td>
                                         <td className="px-3 py-2">{l.type_marchandise}{l.motorisation && l.motorisation !== 'Non concerné' ? <span className="text-gray-400"> · {l.motorisation}</span> : ''}</td>
-                                        <td className="px-3 py-2 whitespace-nowrap">{l.livraison ? <>{fmtDate(l.livraison)} <span className="text-gray-400 text-xs">{l.semaine_livraison}</span></> : '—'}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap">{l.livraison ? <>{fmtDate(l.livraison)} <span className="text-gray-400 text-xs">{semaineDe(l.livraison)}</span>
+                                            {l.semaine_livraison && l.date_livraison_prevue && semaineDe(l.livraison) !== l.semaine_livraison.replace(/\s/g, '') && (
+                                                <span className="ml-1 text-amber-600" title={`Semaine saisie ${l.semaine_livraison}, mais la date exacte ${fmtDate(l.date_livraison_prevue)} est prioritaire`}><AlertTriangle size={12} className="inline" /></span>
+                                            )}</> : '—'}</td>
                                         <td className="px-3 py-2 whitespace-nowrap">{l.duree_pose ? `${String(l.duree_pose).replace('.', ',')} ${l.unite || ''}` : ''}</td>
                                         <td className="px-3 py-2">{l.etat}</td>
                                         <td className="px-3 py-2 text-gray-400"><Pencil size={14} /></td>
@@ -360,6 +372,162 @@ function CarteCommande({ c, ouverte, onToggle, onEditLigne, onAjouterLigne, onPo
 /* =========================================================
    PAGE
 ========================================================= */
+
+/* =========================================================
+   JOURNAL (réservé au développeur)
+========================================================= */
+
+const LIBELLES_CHAMPS = {
+    num_commande: 'N° commande', client: 'Client', fournisseur: 'Fournisseur', date_commande: 'Date de commande', date_arc: 'Date ARC',
+    relance: 'Relance', etat: 'État', num_bc: 'N° BC', montant_ht: 'Montant HT', montant_ttc: 'Montant TTC',
+    type_marchandise: 'Type de marchandise', motorisation: 'Motorisation', duree_pose: 'Durée de pose', unite: 'Unité',
+    semaine_livraison: 'Semaine de livraison', date_livraison_prevue: 'Date de livraison prévue', date_pose: 'Date de pose',
+    statut_pose: 'Statut de pose', commentaire: 'Commentaire', termine: 'Chantier terminé', statut_archive: 'Statut archive',
+    date_bc: 'Date BC', num_facture: 'N° facture', date_facture: 'Date facture', date_paiement: 'Date de paiement',
+};
+
+const ACTIONS_JOURNAL = {
+    commande_creation: ['Ligne de commande ajoutée', 'bg-green-50 text-green-700 border-green-200'],
+    commande_modification: ['Ligne de commande modifiée', 'bg-blue-50 text-blue-700 border-blue-200'],
+    commande_suppression: ['Ligne de commande supprimée', 'bg-red-50 text-red-700 border-red-200'],
+    pose: ['Date de pose', 'bg-teal-50 text-teal-700 border-teal-200'],
+    chantier_termine: ['Chantier terminé', 'bg-gray-100 text-gray-700 border-gray-200'],
+    chantier_restaure: ['Chantier remis en cours', 'bg-amber-50 text-amber-700 border-amber-200'],
+    bc_creation: ['BC ajouté', 'bg-green-50 text-green-700 border-green-200'],
+    bc_auto: ['BC ajouté automatiquement', 'bg-green-50 text-green-700 border-green-200'],
+    bc_modification: ['BC modifié', 'bg-blue-50 text-blue-700 border-blue-200'],
+    bc_suppression: ['BC supprimé', 'bg-red-50 text-red-700 border-red-200'],
+    facture_creation: ['Facture ajoutée', 'bg-green-50 text-green-700 border-green-200'],
+    facture_modification: ['Facture modifiée', 'bg-blue-50 text-blue-700 border-blue-200'],
+    facture_suppression: ['Facture supprimée', 'bg-red-50 text-red-700 border-red-200'],
+    import: ['Import des fichiers Excel', 'bg-purple-50 text-purple-700 border-purple-200'],
+    export_facturation: ['Export de la facturation', 'bg-indigo-50 text-indigo-700 border-indigo-200'],
+};
+
+function valeurJournal(champ, v) {
+    if (v === null || v === undefined || v === '') return <span className="italic text-gray-400">vide</span>;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return fmtDate(v);
+    if (champ === 'montant_ht' || champ === 'montant_ttc') return fmtEuro(Number(v));
+    if (champ === 'termine') return v === '1' ? 'Oui' : 'Non';
+    return v;
+}
+
+function DetailsJournal({ log }) {
+    const d = log.details || {};
+    const ch = d.changements || [];
+    const resume = [];
+    if (log.action === 'import') {
+        resume.push(`Fichiers : ${(d.fichiers || []).join(' + ') || '—'}`);
+        if (d.commandes !== null && d.commandes !== undefined) resume.push(`${d.commandes} lignes de commande`);
+        if (d.bc !== null && d.bc !== undefined) resume.push(`${d.bc} BC`);
+        if (d.factures !== null && d.factures !== undefined) resume.push(`${d.factures} factures`);
+        if (d.bc_ajoutes) resume.push(`${d.bc_ajoutes} BC ajoutés automatiquement`);
+    }
+    if (log.action === 'export_facturation') resume.push(`${d.bc ?? 0} BC · ${d.factures ?? 0} factures`);
+    if (log.action.startsWith('chantier_') && d.statut_archive) resume.push(`Statut : ${d.statut_archive}`);
+    if (d.lignes) resume.push(`${d.lignes} ligne${d.lignes > 1 ? 's' : ''} concernée${d.lignes > 1 ? 's' : ''}`);
+    return (
+        <div className="space-y-1">
+            {resume.length > 0 && <div className="text-xs text-gray-500">{resume.join(' · ')}</div>}
+            {ch.length > 0 && (
+                <ul className="text-xs space-y-0.5">
+                    {ch.map((c, i) => (
+                        <li key={i} className="flex flex-wrap gap-x-1.5">
+                            <span className="font-semibold text-gray-600">{LIBELLES_CHAMPS[c.champ] || c.champ} :</span>
+                            {c.avant === null ? <span className="text-green-700">{valeurJournal(c.champ, c.apres)}</span>
+                                : c.apres === null ? <span className="text-red-600 line-through">{valeurJournal(c.champ, c.avant)}</span>
+                                    : <><span className="text-red-600 line-through">{valeurJournal(c.champ, c.avant)}</span><span className="text-gray-400">→</span><span className="text-green-700 font-semibold">{valeurJournal(c.champ, c.apres)}</span></>}
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </div>
+    );
+}
+
+function Journal({ recherche }) {
+    const [logs, setLogs] = useState(null);
+    const [erreur, setErreur] = useState('');
+    const [personne, setPersonne] = useState('');
+    const [action, setAction] = useState('');
+
+    const charger = () => {
+        setErreur('');
+        fetch(`${API}?logs=1`, { credentials: 'include' })
+            .then(r => r.json())
+            .then(d => { if (!d.success) throw new Error(d.message); setLogs(d.logs); })
+            .catch(e => setErreur(e.message || 'Chargement impossible'));
+    };
+    useEffect(charger, []);
+
+    if (erreur) return <p className="text-red-600 text-sm">{erreur}</p>;
+    if (!logs) return <p className="text-gray-400 text-sm">Chargement du journal…</p>;
+
+    const personnes = [...new Map(logs.map(l => [l.user_email, l.user_name || l.user_email])).entries()];
+    const q = recherche.trim().toLowerCase();
+    const liste = logs.filter(l => (!personne || l.user_email === personne) && (!action || l.action.startsWith(action))
+        && (!q || [l.cible, l.user_name, l.user_email, JSON.stringify(l.details)].some(v => String(v || '').toLowerCase().includes(q))));
+
+    // Regroupement par jour
+    const jours = [];
+    for (const l of liste) {
+        const jour = l.created_at.slice(0, 10);
+        if (!jours.length || jours[jours.length - 1].jour !== jour) jours.push({ jour, logs: [] });
+        jours[jours.length - 1].logs.push(l);
+    }
+    const nomJour = (j) => new Date(j + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+    return (
+        <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+                <select className={inputCls + ' !w-auto'} value={personne} onChange={e => setPersonne(e.target.value)}>
+                    <option value="">Toutes les personnes</option>
+                    {personnes.map(([email, nom]) => <option key={email} value={email}>{nom}</option>)}
+                </select>
+                <select className={inputCls + ' !w-auto'} value={action} onChange={e => setAction(e.target.value)}>
+                    <option value="">Toutes les actions</option>
+                    <option value="commande_">Lignes de commande</option>
+                    <option value="pose">Dates de pose</option>
+                    <option value="chantier_">Chantiers terminés</option>
+                    <option value="bc_">BC</option>
+                    <option value="facture_">Factures</option>
+                    <option value="import">Imports</option>
+                    <option value="export_">Exports</option>
+                </select>
+                <button type="button" onClick={charger} className={btnSecondaire}><RefreshCw size={14} /> Actualiser</button>
+                <span className="text-xs text-gray-400 ml-auto">{liste.length} action{liste.length > 1 ? 's' : ''} · visible uniquement par toi</span>
+            </div>
+
+            {jours.map(({ jour, logs: ls }) => (
+                <div key={jour} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div className="px-4 py-2 bg-gray-50 text-xs font-bold uppercase tracking-wide text-gray-500">{nomJour(jour)}</div>
+                    <div className="divide-y divide-gray-50">
+                        {ls.map(l => {
+                            const [libelle, cls] = ACTIONS_JOURNAL[l.action] || [l.action, 'bg-gray-100 text-gray-700 border-gray-200'];
+                            return (
+                                <div key={l.id} className="grid grid-cols-1 md:grid-cols-[70px_190px_1fr] gap-x-4 gap-y-1 px-4 py-3 text-sm">
+                                    <div className="font-mono text-gray-500">{l.created_at.slice(11, 16)}</div>
+                                    <div>
+                                        <div className="font-semibold text-gray-800">{l.user_name || '—'}</div>
+                                        <div className="text-[11px] text-gray-400 truncate">{l.user_email}</div>
+                                    </div>
+                                    <div className="space-y-1 min-w-0">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <Badge cls={cls}>{libelle}</Badge>
+                                            <span className="text-gray-700 font-medium">{l.cible}</span>
+                                        </div>
+                                        <DetailsJournal log={l} />
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            ))}
+            {!liste.length && <p className="text-center text-sm text-gray-400 py-10">Aucune action enregistrée{personne || action || q ? ' pour ce filtre' : ' pour l\'instant'}.</p>}
+        </div>
+    );
+}
 
 export default function SuiviCommandes() {
     const toast = useToast();
@@ -400,6 +568,39 @@ export default function SuiviCommandes() {
     const termines = useMemo(() => data ? grouperCommandes(data.commandes.filter(l => l.termine), today) : [], [data, today]);
     const bcs = useMemo(() => data ? calculerBC(data.bc, data.factures, data.commandes) : [], [data]);
     const factures = useMemo(() => calculerFactures(data?.factures || [], bcs), [data, bcs]);
+
+    const exporterFacturation = () => {
+        const nbr = (v) => (v === null || v === undefined || v === '' ? '' : Number(v));
+        const fichier = `Facturation_${today}.xlsx`;
+        fetch(API, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'export', fichier, nb_bc: bcs.length, nb_factures: factures.length }) }).catch(() => {});
+        telechargerClasseur(fichier, [
+            {
+                nom: 'Bons de commande',
+                colonnes: [
+                    { titre: 'Client', largeur: 26 }, { titre: 'N° BC', largeur: 14 }, { titre: 'Date BC', type: 'date', largeur: 12 },
+                    { titre: 'Fournisseur', largeur: 20 }, { titre: 'Montant BC HT', type: 'euro' }, { titre: 'Montant BC TTC', type: 'euro' },
+                    { titre: 'Facturé HT', type: 'euro' }, { titre: 'Facturé TTC', type: 'euro' }, { titre: 'Écart HT', type: 'euro' },
+                    { titre: 'Écart TTC', type: 'euro' }, { titre: 'Statut', largeur: 20 }, { titre: 'Nb factures', type: 'nombre', largeur: 11 },
+                    { titre: 'Commentaire', largeur: 40 },
+                ],
+                lignes: bcs.map(b => [b.client, b.num_bc, b.date_bc, b.fournisseur, nbr(b.montant_ht), nbr(b.montant_ttc),
+                    b.factureHT, b.factureTTC, b.ecartHT, b.ecartTTC, b.statut, b.nbFactures, b.commentaire]),
+            },
+            {
+                nom: 'Factures',
+                colonnes: [
+                    { titre: 'N° facture', largeur: 16 }, { titre: 'N° BC', largeur: 14 }, { titre: 'Client', largeur: 26 },
+                    { titre: 'Fournisseur', largeur: 20 }, { titre: 'Date facture', type: 'date', largeur: 12 },
+                    { titre: 'Montant HT', type: 'euro' }, { titre: 'Montant TTC', type: 'euro' },
+                    { titre: 'Date paiement', type: 'date', largeur: 13 }, { titre: 'Statut paiement', largeur: 16 },
+                    { titre: 'Commentaire', largeur: 40 },
+                ],
+                lignes: factures.map(f => [f.num_facture, f.num_bc, f.client, f.fournisseur, f.date_facture,
+                    nbr(f.montant_ht), nbr(f.montant_ttc), f.date_paiement, f.statut, f.commentaire]),
+            },
+        ]);
+    };
 
     const q = recherche.trim().toLowerCase();
     const correspond = (...vals) => !q || vals.some(v => String(v ?? '').toLowerCase().includes(q));
@@ -457,7 +658,16 @@ export default function SuiviCommandes() {
             }
             if (!corps.suivi && !corps.compta) return;
             const remplace = [corps.suivi && 'les commandes', corps.compta && 'les BC et factures'].filter(Boolean).join(' et ');
-            if (!await confirm(`${resume.join('\n')}\n\nCes données vont remplacer ${remplace} du site. Les fichiers Excel ne sont pas modifiés. Continuer ?`)) return;
+            // Ce qui sera effacé sur le site
+            const actuels = [
+                corps.suivi && data.commandes.length && `${data.commandes.length} lignes de commande`,
+                corps.compta && data.bc.length && `${data.bc.length} BC`,
+                corps.compta && data.factures.length && `${data.factures.length} factures`,
+            ].filter(Boolean);
+            const avertissement = actuels.length
+                ? `⚠️ ATTENTION : le site contient déjà ${actuels.join(', ')}.\nIls seront EFFACÉS et remplacés par le contenu du fichier : tout ce qui a été saisi ou modifié sur le site depuis le dernier import sera perdu.`
+                : 'Le site est vide : les données du fichier vont y être chargées.';
+            if (!await confirm(`Importer les fichiers Excel ?\n\n${resume.join('\n')}\n\n${avertissement}\n\nCela remplace ${remplace} du site. Les fichiers Excel ne sont pas modifiés.\n\nConfirmer l'import ?`)) return;
             await executer(() => appeler(corps), d => `Import terminé ✓${d.bc_ajoutes ? ` — ${d.bc_ajoutes} BC du suivi ajouté(s) en compta` : ''}`);
         } catch (err) {
             toast.error(err.message || 'Import impossible');
@@ -484,8 +694,11 @@ export default function SuiviCommandes() {
     const filtreCommande = (c) => !filtre || (filtre === 'relance' ? c.aRelancer : c.statut === filtre);
     const rechercheCommande = (c) => correspond(c.num, c.client, ...c.lignes.flatMap(l => [l.fournisseur, l.num_bc, l.type_marchandise, l.commentaire]));
     // Planifiées : triées par date de pose, comme l'onglet « Planifié » d'Excel
+    // Par défaut : la livraison la plus proche en premier (sans date connue → à la fin)
+    const parLivraison = (a, b) => (a.derniereLivraison || '9999').localeCompare(b.derniereLivraison || '9999') || a.ordre - b.ordre;
     const listeCommandes = commandes.filter(c => filtreCommande(c) && rechercheCommande(c))
-        .sort((a, b) => ['PLANIFIÉ', 'PRÉPLANIFIÉ'].includes(filtre) ? a.datePose.localeCompare(b.datePose) : a.ordre - b.ordre);
+        .sort((a, b) => ['PLANIFIÉ', 'PRÉPLANIFIÉ'].includes(filtre) ? a.datePose.localeCompare(b.datePose)
+            : parLivraison(a, b));
     const listeTermines = termines.filter(rechercheCommande).sort((a, b) => b.ordre - a.ordre);
 
     const listeBC = bcs.filter(b => (!filtre || (filtre === 'ecart' ? b.montantSuivi !== null : b.statut === filtre)) && correspond(b.client, b.num_bc, b.fournisseur, b.commentaire));
@@ -496,19 +709,30 @@ export default function SuiviCommandes() {
             <div className="max-w-[1400px] mx-auto space-y-5">
 
                 {/* En-tête */}
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div>
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <div className="min-w-0">
                         <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 flex items-center gap-3">
                             <span className="bg-[#FFB103] p-2 rounded-xl"><ClipboardCheck size={22} className="text-[#1a1a1a]" /></span>
                             Suivi commandes & factures
                         </h1>
                         <p className="text-sm text-gray-500 mt-2">Commandes fournisseurs, livraisons, planning de pose et rapprochement des factures.</p>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                        <input ref={fichierRef} type="file" accept=".xlsx,.xlsm" multiple className="hidden" onChange={importer} />
-                        <button type="button" disabled={import_} onClick={() => fichierRef.current?.click()} className={btnSecondaire}>
-                            <Upload size={15} /> {import_ ? 'Import…' : 'Importer les fichiers Excel'}
-                        </button>
+                    <div className="flex flex-wrap items-center gap-3 lg:justify-end lg:shrink-0">
+                        {/* Outils Excel */}
+                        <div className="flex flex-wrap items-center gap-2">
+                            {data.acces?.import && <>
+                            <input ref={fichierRef} type="file" accept=".xlsx,.xlsm" multiple className="hidden" onChange={importer} />
+                            <button type="button" disabled={import_} onClick={() => fichierRef.current?.click()} className={btnSecondaire} title="Importer les fichiers Excel (remplace les données du site)">
+                                <Upload size={15} /> {import_ ? 'Import…' : 'Importer Excel'}
+                            </button>
+                            </>}
+                            {data.acces?.compta && ['bc', 'factures'].includes(onglet) && (
+                                <button type="button" onClick={exporterFacturation} className={btnSecondaire} title="Télécharger les BC et les factures dans un fichier Excel">
+                                    <Download size={15} /> Exporter la facturation
+                                </button>
+                            )}
+                        </div>
+                        <span className="hidden sm:block h-8 w-px bg-gray-200" />
                         {onglet === 'commandes' && <button type="button" onClick={() => setModale({ type: 'ligne', ligne: { date_commande: today } })} className={btnPrimaire}><Plus size={16} /> Nouvelle commande</button>}
                         {onglet === 'bc' && <button type="button" onClick={() => setModale({ type: 'bc', bc: {} })} className={btnPrimaire}><Plus size={16} /> Nouveau BC</button>}
                         {onglet === 'factures' && <button type="button" onClick={() => setModale({ type: 'facture', facture: {} })} className={btnPrimaire}><Plus size={16} /> Nouvelle facture</button>}
@@ -517,11 +741,11 @@ export default function SuiviCommandes() {
 
                 {vide && (
                     <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-sm text-amber-900">
-                        <strong>Aucune donnée pour l'instant.</strong> Cliquez sur « Importer les fichiers Excel » et sélectionnez
+                        <strong>Aucune donnée pour l'instant.</strong>{!data.acces?.import ? ' Les données seront bientôt chargées.' : <> Cliquez sur « Importer les fichiers Excel » et sélectionnez
                         {data.acces?.suivi && data.acces?.compta
                             ? ' « Suivi_commandes_fournisseurs » et « ARC + Factures fournisseurs » (les deux en même temps ou l\'un après l\'autre).'
                             : data.acces?.suivi ? ' « Suivi_commandes_fournisseurs ».' : ' « ARC + Factures fournisseurs ».'}
-                        Les fichiers sont seulement lus : ils ne sont jamais modifiés.
+                        {' '}Les fichiers sont seulement lus : ils ne sont jamais modifiés.</>}
                     </div>
                 )}
 
@@ -529,7 +753,7 @@ export default function SuiviCommandes() {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex flex-wrap gap-1.5 bg-white p-1 rounded-xl border border-gray-100">
                         {ONGLETS.filter(o => data.acces?.[o.partie]).map(({ id, label, icon: Icon }) => {
-                            const nb = { commandes: commandes.length, termines: termines.length, bc: bcs.length, factures: factures.length }[id];
+                            const nb = { commandes: commandes.length, termines: termines.length, bc: bcs.length, factures: factures.length, journal: '' }[id];
                             return (
                                 <button key={id} type="button" onClick={() => changerOnglet(id)}
                                     className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${onglet === id ? 'bg-[#1a1a1a] text-white' : 'text-gray-600 hover:bg-gray-50'}`}>
@@ -554,12 +778,22 @@ export default function SuiviCommandes() {
                             ))}
                         </div>
                         <div className="space-y-2.5">
-                            {listeCommandes.map(c => (
-                                <CarteCommande key={c.num || c.lignes[0].id} c={c} ouverte={!!ouvertes[c.num]} onToggle={() => setOuvertes(o => ({ ...o, [c.num]: !o[c.num] }))}
+                            {listeCommandes.map((c, i) => (
+                                <React.Fragment key={c.num || c.lignes[0].id}>
+                                {filtre === 'À PLANIFIER' && (i === 0 || semaineDe(listeCommandes[i - 1].derniereLivraison) !== semaineDe(c.derniereLivraison)) && (
+                                    <div className="flex items-center gap-3 pt-3 first:pt-0">
+                                        <span className="rounded-lg bg-blue-600 px-3 py-1 text-sm font-extrabold text-white">
+                                            {c.derniereLivraison ? `Livraison ${semaineDe(c.derniereLivraison)}` : 'Livraison non connue'}
+                                        </span>
+                                        <span className="h-px flex-1 bg-blue-100" />
+                                    </div>
+                                )}
+                                <CarteCommande c={c} ouverte={!!ouvertes[c.num]} onToggle={() => setOuvertes(o => ({ ...o, [c.num]: !o[c.num] }))}
                                     onEditLigne={l => setModale({ type: 'ligne', ligne: l })}
                                     onAjouterLigne={() => setModale({ type: 'ligne', ligne: { num_commande: c.num, client: c.client, date_commande: today } })}
                                     onPose={() => setModale({ type: 'pose', commande: c })}
                                     onTerminer={() => terminer(c, false)} />
+                                </React.Fragment>
                             ))}
                             {!listeCommandes.length && <p className="text-center text-sm text-gray-400 py-10">Aucune commande{filtre || q ? ' pour ce filtre' : ''}.</p>}
                         </div>
@@ -654,6 +888,9 @@ export default function SuiviCommandes() {
                         </div>
                     </>
                 )}
+
+                {/* ---------- Journal (développeur) ---------- */}
+                {onglet === 'journal' && data.acces?.logs && <Journal recherche={recherche} />}
             </div>
 
             {/* ---------- Modales ---------- */}
