@@ -308,6 +308,13 @@ function CarteCommande({ c, ouverte, onToggle, onEditLigne, onAjouterLigne, onPo
                         )}
                     </div>
                     <div className="text-xs text-gray-500 mt-0.5 truncate">{c.fournisseurs.join(' · ')}</div>
+                    {/* Message de relance visible même dossier fermé */}
+                    {!archive && c.lignes.filter(l => l.relance && l.etat !== 'Annulée').map(l => (
+                        <div key={l.id} className="mt-1 inline-flex max-w-full items-start gap-1.5 mr-2 rounded-lg bg-red-50 border border-red-100 px-2 py-1 text-xs text-red-700">
+                            <BellRing size={12} className="mt-0.5 flex-shrink-0" />
+                            <span className="min-w-0"><strong>{l.fournisseur}</strong> : {l.relance}</span>
+                        </div>
+                    ))}
                 </div>
                 <div className="flex items-center gap-5 text-xs">
                     <div className={`rounded-xl border px-3 py-1.5 text-center ${c.derniereLivraison ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'}`}>
@@ -325,7 +332,7 @@ function CarteCommande({ c, ouverte, onToggle, onEditLigne, onAjouterLigne, onPo
                         <table className="w-full min-w-[820px] text-sm">
                             <thead className="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-500">
                                 <tr>
-                                    {['Fournisseur', 'Commandé', 'ARC', 'N° BC', 'HT', 'Marchandise', 'Livraison', 'Pose', 'État', ''].map(h => <th key={h} className="px-3 py-2 text-left font-semibold whitespace-nowrap">{h}</th>)}
+                                    {['Fournisseur', 'Commandé', 'ARC', 'HT', 'Marchandise', 'Livraison', 'Durée de pose', 'État', ''].map(h => <th key={h} className="px-3 py-2 text-left font-semibold whitespace-nowrap">{h}</th>)}
                                 </tr>
                             </thead>
                             <tbody>
@@ -336,7 +343,6 @@ function CarteCommande({ c, ouverte, onToggle, onEditLigne, onAjouterLigne, onPo
                                         <td className="px-3 py-2 whitespace-nowrap">
                                             {l.date_arc ? fmtDate(l.date_arc) : <span className="text-red-600 font-semibold">{l.relance || 'Pas d\'ARC'}</span>}
                                         </td>
-                                        <td className="px-3 py-2 font-mono text-xs">{l.num_bc}</td>
                                         <td className="px-3 py-2 whitespace-nowrap">{fmtEuro(l.montant_ht)}</td>
                                         <td className="px-3 py-2">{l.type_marchandise}{l.motorisation && l.motorisation !== 'Non concerné' ? <span className="text-gray-400"> · {l.motorisation}</span> : ''}</td>
                                         <td className="px-3 py-2 whitespace-nowrap">{l.livraison ? <>{fmtDate(l.livraison)} <span className="text-gray-400 text-xs">{semaineDe(l.livraison)}</span>
