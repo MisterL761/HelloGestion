@@ -17,11 +17,12 @@ const labelCls = 'block text-xs font-semibold text-gray-600 mb-1';
 const btnPrimaire = 'flex items-center gap-2 px-4 py-2 bg-[#FFB103] text-[#1a1a1a] rounded-xl text-sm font-bold hover:bg-[#d49400] transition-colors disabled:opacity-50';
 const btnSecondaire = 'flex items-center gap-2 px-3 py-2 border border-gray-200 bg-white rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors';
 
+// partie : fichier Excel d'origine, qui décide qui voit l'onglet
 const ONGLETS = [
-    { id: 'commandes', label: 'Commandes en cours', icon: Truck },
-    { id: 'termines', label: 'Chantiers terminés', icon: CheckCircle2 },
-    { id: 'bc', label: 'BC & compta', icon: FileSpreadsheet },
-    { id: 'factures', label: 'Factures', icon: Receipt },
+    { id: 'commandes', label: 'Commandes en cours', icon: Truck, partie: 'suivi' },
+    { id: 'termines', label: 'Chantiers terminés', icon: CheckCircle2, partie: 'suivi' },
+    { id: 'bc', label: 'BC & compta', icon: FileSpreadsheet, partie: 'compta' },
+    { id: 'factures', label: 'Factures', icon: Receipt, partie: 'compta' },
 ];
 
 /* =========================================================
@@ -377,6 +378,8 @@ export default function SuiviCommandes() {
     const appliquer = (d) => {
         if (!d?.success) throw new Error(d?.message || 'Erreur');
         setData(d);
+        // Sans accès au suivi, on ouvre directement sur les BC
+        if (!d.acces?.suivi) setOnglet(o => (o === 'commandes' || o === 'termines') ? 'bc' : o);
         return d;
     };
 
@@ -417,7 +420,7 @@ export default function SuiviCommandes() {
 
     const enregistrerLigne = (ligne) => executer(
         () => appeler({ action: 'commande_save', ligne }),
-        d => d.bc_ajoutes ? `Enregistré ✓ — BC ajouté dans « BC & compta »` : 'Enregistré ✓',
+        d => d.bc_ajoutes && d.acces?.compta ? `Enregistré ✓ — BC ajouté dans « BC & compta »` : 'Enregistré ✓',
     );
 
     const supprimerLigne = async (ligne) => {
@@ -443,11 +446,16 @@ export default function SuiviCommandes() {
             const resume = [];
             for (const f of files) {
                 const { type, data: d } = convertirClasseur(await lireClasseur(f));
+                if (!data.acces?.[type]) {
+                    toast.error(`Vous n'avez pas accès au fichier « ${f.name} » : il est ignoré.`);
+                    continue;
+                }
                 corps[type] = d;
                 resume.push(type === 'suivi'
                     ? `« ${f.name} » : ${d.commandes.filter(l => !l.termine).length} lignes en cours, ${d.commandes.filter(l => l.termine).length} lignes terminées`
                     : `« ${f.name} » : ${d.bc.length} BC, ${d.factures.length} factures`);
             }
+            if (!corps.suivi && !corps.compta) return;
             const remplace = [corps.suivi && 'les commandes', corps.compta && 'les BC et factures'].filter(Boolean).join(' et ');
             if (!await confirm(`${resume.join('\n')}\n\nCes données vont remplacer ${remplace} du site. Les fichiers Excel ne sont pas modifiés. Continuer ?`)) return;
             await executer(() => appeler(corps), d => `Import terminé ✓${d.bc_ajoutes ? ` — ${d.bc_ajoutes} BC du suivi ajouté(s) en compta` : ''}`);
@@ -464,7 +472,7 @@ export default function SuiviCommandes() {
     if (!data) return <div className="p-8 text-gray-400">Chargement…</div>;
 
     const p = data.parametres;
-    const vide = !data.commandes.length && !data.bc.length;
+    const vide = (data.acces?.suivi ? !data.commandes.length : true) && (data.acces?.compta ? !data.bc.length : true);
 
     const compteursCommandes = [
         ['À PLANIFIER', 'À planifier', 'text-amber-600'],
@@ -510,7 +518,9 @@ export default function SuiviCommandes() {
                 {vide && (
                     <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-sm text-amber-900">
                         <strong>Aucune donnée pour l'instant.</strong> Cliquez sur « Importer les fichiers Excel » et sélectionnez
-                        « Suivi_commandes_fournisseurs » et « ARC + Factures fournisseurs » (les deux en même temps ou l'un après l'autre).
+                        {data.acces?.suivi && data.acces?.compta
+                            ? ' « Suivi_commandes_fournisseurs » et « ARC + Factures fournisseurs » (les deux en même temps ou l\'un après l\'autre).'
+                            : data.acces?.suivi ? ' « Suivi_commandes_fournisseurs ».' : ' « ARC + Factures fournisseurs ».'}
                         Les fichiers sont seulement lus : ils ne sont jamais modifiés.
                     </div>
                 )}
@@ -518,7 +528,7 @@ export default function SuiviCommandes() {
                 {/* Onglets + recherche */}
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex flex-wrap gap-1.5 bg-white p-1 rounded-xl border border-gray-100">
-                        {ONGLETS.map(({ id, label, icon: Icon }) => {
+                        {ONGLETS.filter(o => data.acces?.[o.partie]).map(({ id, label, icon: Icon }) => {
                             const nb = { commandes: commandes.length, termines: termines.length, bc: bcs.length, factures: factures.length }[id];
                             return (
                                 <button key={id} type="button" onClick={() => changerOnglet(id)}

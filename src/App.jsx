@@ -33,6 +33,7 @@ import GenerateurDescriptifs from './components/GenerateurDescriptifs';
 import GenerateurCourrier from './components/GenerateurCourrier';
 import GenerateurPrompts from './components/GenerateurPrompts';
 import SuiviCommandes from './components/SuiviCommandes';
+import { accesSuiviCommandes } from './utils/suiviCommandes';
 import StockHistory from './components/StockHistory';
 import Catalogue from './components/Catalogue';
 import Chantiers from './components/Chantiers';
@@ -2117,7 +2118,7 @@ function App() {
                         )}
 
                         {activeModule === 'suivi-commandes' &&
-                            ['admin', 'gerant', 'administration'].includes(displayUser?.role) && (
+                            Object.values(accesSuiviCommandes(displayUser)).some(Boolean) && (
                                 <SuiviCommandes />
                             )}
 

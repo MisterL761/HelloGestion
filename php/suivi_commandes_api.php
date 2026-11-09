@@ -23,11 +23,32 @@ if (!isset($_SESSION['user'])) {
     exit();
 }
 
-const SUIVI_ROLES = ['admin', 'gerant', 'administration'];
+// Accès par personne (e-mail de connexion), comme les deux classeurs Excel :
+// « Suivi commandes » d'un côté, « ARC + Factures » (BC et factures) de l'autre.
+// Même liste dans src/utils/suiviCommandes.js pour l'affichage du menu.
+const SC_ACCES_SUIVI = [
+    'henrique@hello-fermetures.com',
+    'sebastien@hello-fermetures.com',
+    'vanessa@hello-fermetures.com',
+    'alexandra@hello-fermetures.com',
+    'lotfi.ksantinipro@gmail.com',
+];
+const SC_ACCES_COMPTA = [
+    'vanessa@hello-fermetures.com',
+    'alexandra@hello-fermetures.com',
+    'sebastien@hello-fermetures.com',
+    'lotfi.ksantinipro@gmail.com',
+];
 
-if (!in_array($_SESSION['user']['role'] ?? '', SUIVI_ROLES, true)) {
+$scEmail = strtolower(trim((string) ($_SESSION['user']['email'] ?? '')));
+$scAcces = [
+    'suivi'  => in_array($scEmail, SC_ACCES_SUIVI, true),
+    'compta' => in_array($scEmail, SC_ACCES_COMPTA, true),
+];
+
+if (!$scAcces['suivi'] && !$scAcces['compta']) {
     http_response_code(403);
-    echo json_encode(['success' => false, 'message' => 'Accès réservé à l\'administration.']);
+    echo json_encode(['success' => false, 'message' => 'Vous n\'avez pas accès au suivi des commandes.']);
     exit();
 }
 
@@ -203,7 +224,9 @@ function scParametres(PDO $pdo): array {
     return $p;
 }
 
+/** Ne renvoie que les parties auxquelles l'utilisateur a accès. */
 function scToutCharger(PDO $pdo): array {
+    global $scAcces;
     $lire = fn(string $table) => $pdo->query("SELECT * FROM `$table` ORDER BY ordre, id")->fetchAll(PDO::FETCH_ASSOC);
     $typer = function (array $rows) {
         return array_map(function ($r) {
@@ -217,9 +240,10 @@ function scToutCharger(PDO $pdo): array {
     };
     return [
         'success'    => true,
-        'commandes'  => $typer($lire('sc_commandes')),
-        'bc'         => $typer($lire('sc_bc')),
-        'factures'   => $typer($lire('sc_factures')),
+        'acces'      => $scAcces,
+        'commandes'  => $scAcces['suivi'] ? $typer($lire('sc_commandes')) : [],
+        'bc'         => $scAcces['compta'] ? $typer($lire('sc_bc')) : [],
+        'factures'   => $scAcces['compta'] ? $typer($lire('sc_factures')) : [],
         'parametres' => scParametres($pdo),
     ];
 }
@@ -244,6 +268,17 @@ if ($method !== 'POST') scErreur(405, 'Méthode non autorisée.');
 
 $body   = json_decode(file_get_contents('php://input'), true) ?? [];
 $action = (string) ($body['action'] ?? '');
+
+$besoin = match (true) {
+    in_array($action, ['commande_save', 'commande_delete', 'pose', 'terminer'], true) => 'suivi',
+    in_array($action, ['bc_save', 'bc_delete', 'facture_save', 'facture_delete'], true) => 'compta',
+    default => null,
+};
+if ($besoin && !$scAcces[$besoin]) scErreur(403, $besoin === 'suivi' ? 'Vous n\'avez pas accès au suivi des commandes.' : 'Vous n\'avez pas accès aux BC et factures.');
+if ($action === 'import') {
+    if (is_array($body['suivi'] ?? null) && !$scAcces['suivi']) scErreur(403, 'Vous n\'avez pas accès au fichier Suivi commandes.');
+    if (is_array($body['compta'] ?? null) && !$scAcces['compta']) scErreur(403, 'Vous n\'avez pas accès au fichier ARC + Factures.');
+}
 
 try {
     switch ($action) {

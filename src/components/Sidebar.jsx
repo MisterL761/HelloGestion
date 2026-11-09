@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 
 import { createPortal } from 'react-dom';
 
+import { accesSuiviCommandes } from '../utils/suiviCommandes';
+
 
 
 import {
@@ -2509,7 +2511,7 @@ const Sidebar = ({
                                 active={activeSidebar === 'commandes-fournisseurs'}
                             />
 
-                            {['admin', 'gerant', 'administration'].includes(role) && (
+                            {Object.values(accesSuiviCommandes(user)).some(Boolean) && (
                                 <NavItem
                                     icon={ClipboardCheck}
                                     label="Suivi commandes"

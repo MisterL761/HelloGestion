@@ -2,6 +2,26 @@
 
 const JOUR = 86400000;
 
+// Accès par personne (e-mail de connexion). Le serveur applique la même liste (php/suivi_commandes_api.php).
+const ACCES_SUIVI = [
+    'henrique@hello-fermetures.com',
+    'sebastien@hello-fermetures.com',
+    'vanessa@hello-fermetures.com',
+    'alexandra@hello-fermetures.com',
+    'lotfi.ksantinipro@gmail.com',
+];
+const ACCES_COMPTA = [
+    'vanessa@hello-fermetures.com',
+    'alexandra@hello-fermetures.com',
+    'sebastien@hello-fermetures.com',
+    'lotfi.ksantinipro@gmail.com',
+];
+
+export function accesSuiviCommandes(user) {
+    const email = String(user?.email || '').trim().toLowerCase();
+    return { suivi: ACCES_SUIVI.includes(email), compta: ACCES_COMPTA.includes(email) };
+}
+
 export const isoDate = (d) => d ? `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}` : '';
 const versDate = (iso) => iso ? new Date(`${iso}T00:00:00Z`) : null;
 
