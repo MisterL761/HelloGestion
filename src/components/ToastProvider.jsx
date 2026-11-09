@@ -85,7 +85,7 @@ export const ToastProvider = ({ children }) => {
                             className="relative bg-white rounded-2xl shadow-2xl p-6 max-w-sm mx-4 w-full"
                             style={{ animation: 'toastIn 0.2s ease-out' }}
                         >
-                            <p className="text-gray-800 font-semibold text-center mb-6 text-base leading-snug">
+                            <p className="text-gray-800 font-semibold text-center mb-6 text-base leading-snug whitespace-pre-line">
                                 {confirmState.message}
                             </p>
                             <div className="grid grid-cols-2 gap-3">

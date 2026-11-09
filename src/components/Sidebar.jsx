@@ -24,6 +24,8 @@ import {
 
     ClipboardList,
 
+    ClipboardCheck,
+
     LogOut,
 
     LayoutDashboard,
@@ -2506,6 +2508,15 @@ const Sidebar = ({
                                 id="commandes-fournisseurs"
                                 active={activeSidebar === 'commandes-fournisseurs'}
                             />
+
+                            {['admin', 'gerant', 'administration'].includes(role) && (
+                                <NavItem
+                                    icon={ClipboardCheck}
+                                    label="Suivi commandes"
+                                    id="suivi-commandes"
+                                    active={activeSidebar === 'suivi-commandes'}
+                                />
+                            )}
 
 
                             {[

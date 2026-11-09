@@ -32,6 +32,7 @@ import GenerateurARC from './components/GenerateurARC';
 import GenerateurDescriptifs from './components/GenerateurDescriptifs';
 import GenerateurCourrier from './components/GenerateurCourrier';
 import GenerateurPrompts from './components/GenerateurPrompts';
+import SuiviCommandes from './components/SuiviCommandes';
 import StockHistory from './components/StockHistory';
 import Catalogue from './components/Catalogue';
 import Chantiers from './components/Chantiers';
@@ -464,6 +465,10 @@ function App() {
             } else if (section === 'commandes-fournisseurs') {
                 setActiveModule('commandes-fournisseurs');
                 setActiveSidebar('commandes-fournisseurs');
+
+            } else if (section === 'suivi-commandes') {
+                setActiveModule('suivi-commandes');
+                setActiveSidebar('suivi-commandes');
 
             } else if (
                 section === 'boite-fournisseurs'
@@ -1625,6 +1630,7 @@ function App() {
         annuaire:           'Annuaire Fournisseurs',
         'remises-fournisseurs': 'Remises fournisseurs',
         'commandes-fournisseurs': 'Commandes fournisseurs',
+        'suivi-commandes':  'Suivi commandes & factures',
         'boite-fournisseurs': 'Boîte Fournisseurs',
         assistant:          'Assistant IA',
         comparateur:        'Comparateur Devis',
@@ -2109,6 +2115,11 @@ function App() {
                         {activeModule === 'commandes-fournisseurs' && (
                             <CommandesFournisseurs user={displayUser} />
                         )}
+
+                        {activeModule === 'suivi-commandes' &&
+                            ['admin', 'gerant', 'administration'].includes(displayUser?.role) && (
+                                <SuiviCommandes />
+                            )}
 
                         {activeModule ===
                             'assistant' && (
