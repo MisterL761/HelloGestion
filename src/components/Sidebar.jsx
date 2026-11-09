@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 
 import { createPortal } from 'react-dom';
 
+import { accesSuiviCommandes } from '../utils/suiviCommandes';
+
 
 
 import {
@@ -23,6 +25,8 @@ import {
     Drill,
 
     ClipboardList,
+
+    ClipboardCheck,
 
     LogOut,
 
@@ -2506,6 +2510,15 @@ const Sidebar = ({
                                 id="commandes-fournisseurs"
                                 active={activeSidebar === 'commandes-fournisseurs'}
                             />
+
+                            {Object.values(accesSuiviCommandes(user)).some(Boolean) && (
+                                <NavItem
+                                    icon={ClipboardCheck}
+                                    label="Suivi commandes"
+                                    id="suivi-commandes"
+                                    active={activeSidebar === 'suivi-commandes'}
+                                />
+                            )}
 
 
                             {[
