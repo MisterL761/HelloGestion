@@ -71,6 +71,7 @@ import SessionExpiredModal from './components/SessionExpiredModal';
 
 import BroadcastModal from './components/BroadcastModal';
 import BroadcastBubble from './components/BroadcastBubble';
+import AccesPage from './components/AccesPage';
 
 import { useDataFetching } from './hooks/useDataFetching';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
@@ -1726,6 +1727,9 @@ function App() {
                     }
                     pageTitle={
                         currentPageTitle
+                    }
+                    droite={
+                        <AccesPage page={activeSidebar} user={user} />
                     }
                 />
 
