@@ -151,6 +151,33 @@ $pdo->exec("
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ");
 
+// Lignes supprimées sur le site : un réimport Excel ne les fait pas revenir
+$pdo->exec("
+    CREATE TABLE IF NOT EXISTS `sc_supprimes` (
+        `id`         INT          NOT NULL AUTO_INCREMENT,
+        `table_nom`  VARCHAR(30)  NOT NULL,
+        `cle`        VARCHAR(400) NOT NULL,
+        `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        KEY `idx_table` (`table_nom`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+");
+
+/** Ajoute une colonne si elle n'existe pas encore (les données existantes sont conservées). */
+function scAjouterColonne(PDO $pdo, string $table, string $colonne, string $definition): void {
+    $st = $pdo->prepare('SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?');
+    $st->execute([$table, $colonne]);
+    if (!(int) $st->fetchColumn()) $pdo->exec("ALTER TABLE `$table` ADD COLUMN `$colonne` $definition");
+}
+
+// Pour l'import sans perte :
+// - cle_import   : identifiant de la ligne dans le fichier Excel (fixé à l'import, ne change plus)
+// - modifie_site : 1 dès que la ligne a été modifiée sur Hello Gestion → un réimport ne la touche plus
+foreach (['sc_commandes', 'sc_bc', 'sc_factures'] as $t) {
+    scAjouterColonne($pdo, $t, 'cle_import', "VARCHAR(400) NULL");
+    scAjouterColonne($pdo, $t, 'modifie_site', "TINYINT(1) NOT NULL DEFAULT 0");
+}
+
 const SC_PARAMETRES_DEFAUT = [
     'produits'     => ['Fenêtre', 'Porte-fenêtre', 'Coulissant', "Porte d'entrée", "Porte d'intérieur", 'Volet roulant', 'Volet battant', 'Moustiquaire', 'Porte de garage', 'Portail', 'Portillon', 'Clôture', 'Pergola', 'Carport', 'Store', 'Autre', 'Tablier seul', 'Kit motorisation', 'Store de velux', 'Velux', 'Barreaudage', 'Vitrage'],
     'motorisation' => ['Motorisé', 'Non motorisé', 'Mixte', 'Non concerné'],
@@ -238,7 +265,7 @@ function scDiff(?array $avant, ?array $apres): array {
     $champs = array_unique(array_merge(array_keys($avant ?? []), array_keys($apres ?? [])));
     $out = [];
     foreach ($champs as $c) {
-        if (in_array($c, ['id', 'ordre', 'updated_by', 'updated_at'], true)) continue;
+        if (in_array($c, ['id', 'ordre', 'updated_by', 'updated_at', 'cle_import', 'modifie_site'], true)) continue;
         $a = $avant === null ? null : $norm($avant[$c] ?? null);
         $b = $apres === null ? null : $norm($apres[$c] ?? null);
         if ($a === $b || (($a ?? '') === '' && ($b ?? '') === '')) continue;
@@ -263,6 +290,8 @@ function scEnregistrerJournalise(PDO $pdo, string $table, array $champs, array $
     $id = scEnregistrer($pdo, $table, $champs, $ligne, $auteur);
     $apres = scLire($pdo, $table, $id);
     $diff = scDiff($avant, $apres);
+    // Saisie faite sur le site : un réimport Excel ne l'écrasera jamais
+    if ($avant === null || $diff) $pdo->prepare("UPDATE `$table` SET modifie_site = 1 WHERE id = ?")->execute([$id]);
     if ($avant === null || $diff) scLog($pdo, $action . ($avant === null ? '_creation' : '_modification'), scCible($table, $apres), ['changements' => $diff]);
     return $id;
 }
@@ -271,11 +300,82 @@ function scEnregistrerJournalise(PDO $pdo, string $table, array $champs, array $
 function scSupprimerJournalise(PDO $pdo, string $table, int $id, string $action): void {
     $avant = scLire($pdo, $table, $id);
     $pdo->prepare("DELETE FROM `$table` WHERE id = ?")->execute([$id]);
+    // Mémorise la suppression pour qu'un réimport Excel ne fasse pas revenir la ligne
+    if ($avant) $pdo->prepare('INSERT INTO sc_supprimes (table_nom, cle) VALUES (?, ?)')->execute([$table, scCleLigne($table, $avant)]);
     if ($avant) scLog($pdo, $action, scCible($table, $avant), ['changements' => scDiff($avant, null)]);
 }
 
 function scCle(string $numBc, string $fournisseur): string {
     return mb_strtolower(trim($numBc)) . '|' . mb_strtolower(trim($fournisseur));
+}
+
+/* ---------- Import sans perte (fusion) ---------- */
+
+/**
+ * Identifiant d'une ligne pour rapprocher le fichier Excel et le site :
+ * - commande : n° de commande client + fournisseur (le n° de BC peut arriver plus tard)
+ * - BC       : n° de BC + fournisseur
+ * - facture  : n° de facture + n° de BC
+ * Une ligne déjà importée garde l'identifiant de son import, même si on la modifie ensuite.
+ */
+function scCleLigne(string $table, array $r): string {
+    if (!empty($r['cle_import'])) return (string) $r['cle_import'];
+    $n = fn($v) => mb_strtolower(trim((string) ($v ?? '')));
+    return match ($table) {
+        'sc_commandes' => $n($r['num_commande'] ?? '') . '|' . $n($r['fournisseur'] ?? ''),
+        'sc_bc'        => $n($r['num_bc'] ?? '') . '|' . $n($r['fournisseur'] ?? ''),
+        'sc_factures'  => $n($r['num_facture'] ?? '') . '|' . $n($r['num_bc'] ?? ''),
+        default        => '',
+    };
+}
+
+/**
+ * Fusionne les lignes d'un fichier Excel dans une table, sans jamais rien supprimer :
+ * - ligne absente du site                 → ajoutée
+ * - ligne modifiée sur le site            → conservée telle quelle (le site a priorité)
+ * - ligne jamais modifiée sur le site     → mise à jour avec le fichier
+ * - ligne supprimée sur le site           → ne revient pas
+ * - ligne présente seulement sur le site  → conservée
+ */
+function scFusionner(PDO $pdo, string $table, array $champs, array $lignesExcel, string $auteur): array {
+    $stats = ['ajoutees' => 0, 'mises_a_jour' => 0, 'conservees' => 0, 'identiques' => 0, 'ignorees' => 0];
+
+    $site = [];
+    foreach ($pdo->query("SELECT * FROM `$table` ORDER BY id") as $r) $site[scCleLigne($table, $r)][] = $r;
+
+    $supprimes = [];
+    $st = $pdo->prepare('SELECT cle, COUNT(*) FROM sc_supprimes WHERE table_nom = ? GROUP BY cle');
+    $st->execute([$table]);
+    foreach ($st->fetchAll(PDO::FETCH_NUM) as [$cle, $nb]) $supprimes[$cle] = (int) $nb;
+
+    $excel = [];
+    foreach ($lignesExcel as $l) {
+        $l = (array) $l;
+        unset($l['id'], $l['ordre'], $l['cle_import'], $l['modifie_site']);
+        $excel[scCleLigne($table, $l)][] = $l;
+    }
+
+    $ordre = (int) $pdo->query("SELECT COALESCE(MAX(ordre), 0) FROM `$table`")->fetchColumn();
+    foreach ($excel as $cle => $lignes) {
+        $existantes = $site[$cle] ?? [];
+        foreach ($lignes as $i => $l) {
+            if (isset($existantes[$i])) {
+                $r = $existantes[$i];
+                if ((int) $r['modifie_site']) { $stats['conservees']++; continue; }
+                $nouveau = scNettoyer($l, $champs);
+                if (!scDiff(array_intersect_key($r, $nouveau), $nouveau)) { $stats['identiques']++; continue; }
+                scEnregistrer($pdo, $table, $champs, ['id' => (int) $r['id']] + $l, $auteur);
+                $stats['mises_a_jour']++;
+                continue;
+            }
+            // Au-delà des lignes déjà sur le site : celles supprimées sur le site ne reviennent pas
+            if (($supprimes[$cle] ?? 0) > 0) { $supprimes[$cle]--; $stats['ignorees']++; continue; }
+            $id = scEnregistrer($pdo, $table, $champs, ['ordre' => ++$ordre] + $l, $auteur);
+            $pdo->prepare("UPDATE `$table` SET cle_import = ? WHERE id = ?")->execute([$cle, $id]);
+            $stats['ajoutees']++;
+        }
+    }
+    return $stats;
 }
 
 /**
@@ -416,7 +516,7 @@ try {
                 ['date_pose' => $avant['date_pose'] ?? null, 'statut_pose' => $avant['statut_pose'] ?? null],
                 ['date_pose' => $date, 'statut_pose' => $statut]
             ), 'lignes' => (int) ($avant['nb'] ?? 0)]);
-            $pdo->prepare('UPDATE sc_commandes SET date_pose = ?, statut_pose = ?, updated_by = ? WHERE num_commande = ? AND termine = 0')
+            $pdo->prepare('UPDATE sc_commandes SET date_pose = ?, statut_pose = ?, updated_by = ?, modifie_site = 1 WHERE num_commande = ? AND termine = 0')
                 ->execute([$date, $statut, $auteur, $num]);
             scRepondre($pdo);
         }
@@ -431,7 +531,7 @@ try {
             $avant = $st->fetch(PDO::FETCH_ASSOC) ?: [];
             scLog($pdo, $termine ? 'chantier_termine' : 'chantier_restaure', trim("Commande $num · " . ($avant['client'] ?? ''), ' ·'),
                 ['statut_archive' => $statut, 'lignes' => (int) ($avant['nb'] ?? 0)]);
-            $pdo->prepare('UPDATE sc_commandes SET termine = ?, statut_archive = ?, updated_by = ? WHERE num_commande = ? AND termine = ?')
+            $pdo->prepare('UPDATE sc_commandes SET termine = ?, statut_archive = ?, updated_by = ?, modifie_site = 1 WHERE num_commande = ? AND termine = ?')
                 ->execute([$termine, $statut, $auteur, $num, 1 - $termine]);
             scRepondre($pdo);
         }
@@ -471,7 +571,8 @@ try {
             exit();
         }
 
-        // Import des fichiers Excel : remplace les données du site par celles du ou des classeurs envoyés
+        // Import des fichiers Excel : FUSION avec les données du site, rien n'est jamais supprimé ni écrasé
+        // (voir scFusionner : ce qui a été saisi ou modifié sur Hello Gestion reste tel quel)
         case 'import': {
             $suivi  = $body['suivi'] ?? null;
             $compta = $body['compta'] ?? null;
@@ -479,23 +580,20 @@ try {
 
             $pdo->beginTransaction();
             $parametres = scParametres($pdo);
+            // Listes déroulantes : on ajoute les valeurs du fichier, on ne retire rien
+            $unir = fn(array $site, array $fichier) => array_values(array_unique(array_merge($site, array_map('strval', $fichier))));
+            $resultat = [];
 
             if (is_array($suivi)) {
-                $pdo->exec('DELETE FROM sc_commandes');
-                $ordre = 0;
-                foreach ((array) ($suivi['commandes'] ?? []) as $l) scEnregistrer($pdo, 'sc_commandes', SC_CHAMPS_COMMANDE, ['ordre' => ++$ordre] + $l, $auteur);
+                $resultat['commandes'] = scFusionner($pdo, 'sc_commandes', SC_CHAMPS_COMMANDE, (array) ($suivi['commandes'] ?? []), $auteur);
                 foreach (['produits', 'motorisation', 'unites', 'etats'] as $cle) {
-                    if (!empty($suivi['parametres'][$cle])) $parametres[$cle] = array_values(array_unique(array_map('strval', $suivi['parametres'][$cle])));
+                    if (!empty($suivi['parametres'][$cle])) $parametres[$cle] = $unir($parametres[$cle] ?? [], $suivi['parametres'][$cle]);
                 }
                 if (!empty($suivi['parametres']['fournisseurs'])) $parametres['fournisseurs'] = array_merge($parametres['fournisseurs'], $suivi['parametres']['fournisseurs']);
             }
             if (is_array($compta)) {
-                $pdo->exec('DELETE FROM sc_bc');
-                $pdo->exec('DELETE FROM sc_factures');
-                $ordre = 0;
-                foreach ((array) ($compta['bc'] ?? []) as $b) scEnregistrer($pdo, 'sc_bc', SC_CHAMPS_BC, ['ordre' => ++$ordre] + $b, $auteur);
-                $ordre = 0;
-                foreach ((array) ($compta['factures'] ?? []) as $f) scEnregistrer($pdo, 'sc_factures', SC_CHAMPS_FACTURE, ['ordre' => ++$ordre] + $f, $auteur);
+                $resultat['bc'] = scFusionner($pdo, 'sc_bc', SC_CHAMPS_BC, (array) ($compta['bc'] ?? []), $auteur);
+                $resultat['factures'] = scFusionner($pdo, 'sc_factures', SC_CHAMPS_FACTURE, (array) ($compta['factures'] ?? []), $auteur);
                 if (!empty($compta['fournisseurs'])) $parametres['fournisseurs'] = array_merge($parametres['fournisseurs'], $compta['fournisseurs']);
             }
 
@@ -513,9 +611,10 @@ try {
                 'bc'         => is_array($compta) ? count((array) ($compta['bc'] ?? [])) : null,
                 'factures'   => is_array($compta) ? count((array) ($compta['factures'] ?? [])) : null,
                 'bc_ajoutes' => $ajoutes,
+                'fusion'     => $resultat,
             ]);
             $pdo->commit();
-            scRepondre($pdo, ['bc_ajoutes' => $ajoutes]);
+            scRepondre($pdo, ['bc_ajoutes' => $ajoutes, 'fusion' => $resultat]);
         }
 
         default:
